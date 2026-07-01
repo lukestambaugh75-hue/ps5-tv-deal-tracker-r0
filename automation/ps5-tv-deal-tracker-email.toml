@@ -1,5 +1,5 @@
 version = 1
-id = "ps5-tv-deal-tracker-email"
+id = "ps5-and-tv-deal-tracker-email"
 kind = "cron"
 name = "PS5 and TV deal tracker email"
 prompt = """Run the PS5 and TV Deal Tracker refresh, public dashboard verification, and approved email delivery.
