@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PS5 and TV Deal Tracker</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101318;
+      --panel: #171d26;
+      --panel-2: #202938;
+      --ink: #f5f7fb;
+      --muted: #b8c3d6;
+      --line: #334155;
+      --blue: #65a7ff;
+      --green: #9be66d;
+      --amber: #ffcb6b;
+      --red: #ff8b8b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.5; }
+    a { color: var(--blue); text-underline-offset: 3px; }
+    .wrap { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+    .hero { min-height: 560px; display: flex; align-items: flex-end; background: linear-gradient(90deg, rgba(16,19,24,.98), rgba(16,19,24,.82), rgba(16,19,24,.35)), url("assets/electronics-hero.png") center/cover no-repeat; border-bottom: 1px solid var(--line); }
+    .hero-content { padding: 68px 0 38px; max-width: 850px; }
+    h1 { font-size: clamp(2.4rem, 7vw, 5.2rem); line-height: .96; margin: 12px 0 18px; letter-spacing: 0; }
+    h2 { font-size: 1.45rem; margin: 0 0 14px; }
+    h3 { margin: 0 0 8px; font-size: 1.15rem; }
+    p { margin: 8px 0; }
+    .lead { color: var(--muted); font-size: 1.08rem; max-width: 760px; }
+    .eyebrow { color: var(--green); text-transform: uppercase; font-size: .76rem; font-weight: 800; letter-spacing: .08em; }
+    .metrics, .best-grid { display: grid; gap: 14px; }
+    .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 26px; }
+    .metric, .best-card, .panel { background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+    .metric strong { display: block; font-size: 1.75rem; margin-top: 4px; }
+    .best-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 26px 0 0; }
+    .section { padding: 32px 0; }
+    .chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0; }
+    .chip { display: inline-flex; align-items: center; min-height: 24px; border-radius: 999px; padding: 3px 9px; font-size: .78rem; border: 1px solid var(--line); color: var(--muted); }
+    .chip.good { color: #17351e; background: var(--green); border-color: var(--green); }
+    .chip.warn { color: #2f1e00; background: var(--amber); border-color: var(--amber); }
+    dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0 0; }
+    dt { color: var(--muted); font-size: .78rem; }
+    dd { margin: 0; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    th, td { text-align: left; padding: 11px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--green); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }
+    .note { color: var(--muted); }
+    .footer { color: var(--muted); font-size: .85rem; padding: 26px 0 40px; }
+    @media (max-width: 760px) { .metrics, .best-grid, dl { grid-template-columns: 1fr; } .hero { min-height: 520px; } }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap hero-content">
+      <span class="eyebrow">Big-box and Houston-area electronics tracker</span>
+      <h1>PS5 and 65-inch TV Deal Tracker</h1>
+      <p class="lead">PS5: Walmart $649 for PlayStation 5 Disc Console Slim - 1TB. TV: Walmart $528 for TCL 65 inch QM6K QD-Mini LED QLED 4K Smart TV.</p>
+      <div class="metrics">
+        <div class="metric"><span class="eyebrow">Freshness</span><strong>fresh</strong><small>Generated 2026-07-01T11:37:29Z</small></div>
+        <div class="metric"><span class="eyebrow">Tracked Rows</span><strong>6</strong><small>Current retailer evidence rows</small></div>
+        <div class="metric"><span class="eyebrow">Warnings</span><strong>2</strong><small>manufacturer-direct reference, open-box/refurbished</small></div>
+      </div>
+      <div class="best-grid">
+        
+        <article class="best-card">
+          <span class="eyebrow">Best Buy Today - PS5</span>
+          <h3>Walmart: $649</h3>
+          <p><a href="https://www.walmart.com/ip/PlayStation-5-Disc-Console-Slim/17816601985">PlayStation 5 Disc Console Slim - 1TB</a></p>
+          <div class="chips"><span class="chip good">clean buy path</span></div>
+          <dl>
+            <div><dt>Availability</dt><dd>available</dd></div>
+            <div><dt>Pickup / delivery</dt><dd>Big-box page showed add-to-cart purchase path; confirm Houston-area pickup or delivery before buying.</dd></div>
+            <div><dt>Evidence</dt><dd>big_box_public_price</dd></div>
+          </dl>
+        </article>
+        
+        <article class="best-card">
+          <span class="eyebrow">Best Buy Today - 65-inch TV</span>
+          <h3>Walmart: $528</h3>
+          <p><a href="https://www.walmart.com/browse/electronics/65-inch-tvs/tcl/3944_1060825_2489948_3421074/YnJhbmQ6VENM">TCL 65 inch QM6K QD-Mini LED QLED 4K Smart TV</a></p>
+          <div class="chips"><span class="chip good">clean buy path</span></div>
+          <dl>
+            <div><dt>Availability</dt><dd>available</dd></div>
+            <div><dt>Pickup / delivery</dt><dd>Free shipping was shown; confirm Houston-area delivery timing before buying.</dd></div>
+            <div><dt>Evidence</dt><dd>big_box_public_price</dd></div>
+          </dl>
+        </article>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="section">
+      <div class="wrap panel">
+        <span class="eyebrow">Price ladder</span>
+        <h2>Current Retailer Rows</h2>
+        <table>
+          <thead><tr><th>Target</th><th>Retailer</th><th>Product</th><th>Price</th><th>Stock</th><th>Warnings</th></tr></thead>
+          <tbody>
+          <tr>
+            <td>PS5</td>
+            <td>Walmart</td>
+            <td><a href="https://www.walmart.com/ip/PlayStation-5-Disc-Console-Slim/17816601985">PlayStation 5 Disc Console Slim - 1TB</a></td>
+            <td>$649</td>
+            <td>available</td>
+            <td><span class="chip good">clean buy path</span></td>
+          </tr>
+          <tr>
+            <td>PS5</td>
+            <td>PlayStation Direct</td>
+            <td><a href="https://direct.playstation.com/en-us/hardware/ps5">PlayStation 5 Console - 1TB</a></td>
+            <td>$649</td>
+            <td>official price reference</td>
+            <td><span class="chip warn">manufacturer-direct reference</span></td>
+          </tr>
+          <tr>
+            <td>PS5</td>
+            <td>Best Buy</td>
+            <td><a href="https://www.bestbuy.com/product/playstation-5-slim-console-1tb/JXHQ37TYLC">PlayStation 5 Slim Console - 1TB</a></td>
+            <td>$597.99</td>
+            <td>new and open-box price range shown</td>
+            <td><span class="chip warn">open-box/refurbished</span></td>
+          </tr>
+          <tr>
+            <td>TV</td>
+            <td>Walmart</td>
+            <td><a href="https://www.walmart.com/browse/electronics/65-inch-tvs/tcl/3944_1060825_2489948_3421074/YnJhbmQ6VENM">TCL 65 inch QM6K QD-Mini LED QLED 4K Smart TV</a></td>
+            <td>$528</td>
+            <td>available</td>
+            <td><span class="chip good">clean buy path</span></td>
+          </tr>
+          <tr>
+            <td>TV</td>
+            <td>Best Buy</td>
+            <td><a href="https://www.bestbuy.com/product/tcl-65-class-qm6k-series-4k-uhd-hdr-qd-mini-led-smart-tv-with-google-tv-2025/J36QYTQW5K">TCL 65 inch QM6K QD Mini LED Smart TV with Google TV</a></td>
+            <td>$699.99</td>
+            <td>available</td>
+            <td><span class="chip good">clean buy path</span></td>
+          </tr>
+          <tr>
+            <td>TV</td>
+            <td>Walmart</td>
+            <td><a href="https://www.walmart.com/browse/electronics/65-inch-tvs/tcl/3944_1060825_2489948_3421074/YnJhbmQ6VENM">TCL 65 inch QM7K QD-Mini LED QLED 4K Smart TV</a></td>
+            <td>$898</td>
+            <td>available</td>
+            <td><span class="chip good">clean buy path</span></td>
+          </tr></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="section">
+      <div class="wrap panel">
+        <span class="eyebrow">Price History</span>
+        <h2>Best Row Trend</h2>
+        <table>
+          <thead><tr><th>Date</th><th>Target</th><th>Retailer</th><th>Product</th><th>Price</th></tr></thead>
+          <tbody><tr><td>2026-07-01</td><td>ps5</td><td>PlayStation Direct</td><td>PlayStation 5 Console - 1TB</td><td>$649</td></tr>
+<tr><td>2026-07-01</td><td>tv</td><td>Walmart</td><td>TCL 65 inch QM6K QD-Mini LED QLED 4K Smart TV</td><td>$528</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="section">
+      <div class="wrap panel">
+        <span class="eyebrow">Run Rules</span>
+        <h2>Evidence Guardrails</h2>
+        <p class="note">The scheduled run must prove fresh visible evidence before quoting a current price. Member-only, cart-only, marketplace, open-box/refurbished, out-of-stock, blocked, and stale rows are visible as warnings instead of being promoted silently.</p>
+        <p class="note">Dashboard URL: <a href="https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/">https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/</a></p>
+      </div>
+    </section>
+  </main>
+  <footer class="wrap footer">Confirm final cart total, tax, pickup or delivery timing, and seller identity before buying.</footer>
+</body>
+</html>

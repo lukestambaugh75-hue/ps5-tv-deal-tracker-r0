@@ -1,0 +1,168 @@
+{
+  "meta": {
+    "tracker_name": "PS5 and TV Deal Tracker",
+    "purchase_area": "Big-box retailers and Houston-area pickup/delivery",
+    "generated_at_utc": "2026-07-01T11:37:29Z",
+    "blocker": null
+  },
+  "targets": [
+    {
+      "id": "ps5",
+      "label": "PS5",
+      "target": "PlayStation 5 console",
+      "rules": [
+        "Prefer standard PS5 Disc or Digital console from an authorized big-box retailer.",
+        "Bundles are allowed when the bundle value is clear.",
+        "Marketplace sellers, scalper pricing, PS5 Pro, refurb, and open-box rows are warnings, not default best buys."
+      ]
+    },
+    {
+      "id": "tv",
+      "label": "65-inch TV",
+      "target": "60-70 inch mid-quality 4K smart TV",
+      "rules": [
+        "Default to 65 inches.",
+        "Prefer mainstream mid-quality models such as QLED, Mini LED, or strong value 4K sets.",
+        "Avoid no-name marketplace rows and entry-tier TVs unless the price is clearly worth the tradeoff."
+      ]
+    }
+  ],
+  "items": [
+    {
+      "target_id": "ps5",
+      "retailer": "Walmart",
+      "brand": "Sony",
+      "model": "PlayStation 5 Disc Console Slim - 1TB",
+      "product_name": "PlayStation 5 Disc Console Slim - 1TB",
+      "price": 649.0,
+      "list_price": 649.99,
+      "url": "https://www.walmart.com/ip/PlayStation-5-Disc-Console-Slim/17816601985",
+      "stock_status": "available",
+      "pickup_delivery": "Big-box page showed add-to-cart purchase path; confirm Houston-area pickup or delivery before buying.",
+      "evidence_class": "big_box_public_price",
+      "condition": "new",
+      "quality_tier": "standard",
+      "evidence_text": "Walmart page showed PlayStation 5 Disc Console Slim -1TB with current price $649.00.",
+      "captured_at": "2026-07-01T11:37:29Z",
+      "id": "ps5-walmart-playstation-5-disc-console-slim-1tb",
+      "warnings": []
+    },
+    {
+      "target_id": "ps5",
+      "retailer": "PlayStation Direct",
+      "brand": "Sony",
+      "model": "PlayStation 5 Console - 1TB",
+      "product_name": "PlayStation 5 Console - 1TB",
+      "price": 649.0,
+      "list_price": 649.0,
+      "url": "https://direct.playstation.com/en-us/hardware/ps5",
+      "stock_status": "official price reference",
+      "pickup_delivery": "Direct shipping path; confirm availability before buying.",
+      "evidence_class": "manufacturer_direct_reference",
+      "condition": "new",
+      "quality_tier": "standard",
+      "evidence_text": "PlayStation Direct PS5 console page showed PlayStation 5 Console - 1TB at $649.00 and Digital Edition at $599.00.",
+      "captured_at": "2026-07-01T11:37:29Z",
+      "id": "ps5-playstation-direct-playstation-5-console-1tb",
+      "warnings": [
+        "manufacturer-direct reference"
+      ]
+    },
+    {
+      "target_id": "ps5",
+      "retailer": "Best Buy",
+      "brand": "Sony",
+      "model": "PlayStation 5 Slim Console - 1TB",
+      "product_name": "PlayStation 5 Slim Console - 1TB",
+      "price": 597.99,
+      "list_price": 649.99,
+      "url": "https://www.bestbuy.com/product/playstation-5-slim-console-1tb/JXHQ37TYLC",
+      "stock_status": "new and open-box price range shown",
+      "pickup_delivery": "Best Buy page showed shipping; confirm Houston-area pickup or delivery before buying.",
+      "evidence_class": "open_box_or_refurb",
+      "condition": "open-box",
+      "quality_tier": "standard",
+      "evidence_text": "Best Buy product snippet showed New and Open-Box $597.99 - $925.39; treated as open-box/range warning until a new-only price is visible.",
+      "captured_at": "2026-07-01T11:37:29Z",
+      "id": "ps5-best-buy-playstation-5-slim-console-1tb",
+      "warnings": [
+        "open-box/refurbished"
+      ]
+    },
+    {
+      "target_id": "tv",
+      "retailer": "Walmart",
+      "brand": "TCL",
+      "model": "65QM6K",
+      "product_name": "TCL 65 inch QM6K QD-Mini LED QLED 4K Smart TV",
+      "price": 528.0,
+      "list_price": 699.99,
+      "url": "https://www.walmart.com/browse/electronics/65-inch-tvs/tcl/3944_1060825_2489948_3421074/YnJhbmQ6VENM",
+      "stock_status": "available",
+      "pickup_delivery": "Free shipping was shown; confirm Houston-area delivery timing before buying.",
+      "evidence_class": "big_box_public_price",
+      "condition": "new",
+      "quality_tier": "mid",
+      "size_inches": 65,
+      "panel": "QD-Mini LED QLED",
+      "evidence_text": "Walmart 65-inch TCL TV page showed TCL 65 inch QM6K current price $528.00.",
+      "captured_at": "2026-07-01T11:37:29Z",
+      "id": "tv-walmart-65qm6k",
+      "warnings": []
+    },
+    {
+      "target_id": "tv",
+      "retailer": "Best Buy",
+      "brand": "TCL",
+      "model": "65QM6K",
+      "product_name": "TCL 65 inch QM6K QD Mini LED Smart TV with Google TV",
+      "price": 699.99,
+      "list_price": 999.99,
+      "url": "https://www.bestbuy.com/product/tcl-65-class-qm6k-series-4k-uhd-hdr-qd-mini-led-smart-tv-with-google-tv-2025/J36QYTQW5K",
+      "stock_status": "available",
+      "pickup_delivery": "Best Buy page showed pickup/delivery; confirm Houston-area timing before buying.",
+      "evidence_class": "houston_visible_buy_path",
+      "condition": "new",
+      "quality_tier": "mid",
+      "size_inches": 65,
+      "panel": "QD Mini LED QLED",
+      "evidence_text": "Best Buy product page showed buy-new price $699.99 and pickup availability.",
+      "captured_at": "2026-07-01T11:37:29Z",
+      "id": "tv-best-buy-65qm6k",
+      "warnings": []
+    },
+    {
+      "target_id": "tv",
+      "retailer": "Walmart",
+      "brand": "TCL",
+      "model": "65QM7K",
+      "product_name": "TCL 65 inch QM7K QD-Mini LED QLED 4K Smart TV",
+      "price": 898.0,
+      "list_price": 1199.99,
+      "url": "https://www.walmart.com/browse/electronics/65-inch-tvs/tcl/3944_1060825_2489948_3421074/YnJhbmQ6VENM",
+      "stock_status": "available",
+      "pickup_delivery": "Shipping shown; confirm Houston-area delivery timing before buying.",
+      "evidence_class": "big_box_public_price",
+      "condition": "new",
+      "quality_tier": "mid",
+      "size_inches": 65,
+      "panel": "QD-Mini LED QLED",
+      "evidence_text": "Walmart TCL 65-inch listing showed QM7K at $898.00.",
+      "captured_at": "2026-07-01T11:37:29Z",
+      "id": "tv-walmart-65qm7k",
+      "warnings": []
+    }
+  ],
+  "daily_brief": {
+    "fresh_evidence_status": "fresh",
+    "summary": "PS5: Walmart $649 for PlayStation 5 Disc Console Slim - 1TB. TV: Walmart $528 for TCL 65 inch QM6K QD-Mini LED QLED 4K Smart TV.",
+    "warnings": [
+      "manufacturer-direct reference",
+      "open-box/refurbished"
+    ],
+    "data_quality_gaps": [
+      "Confirm final cart total, tax, pickup/delivery timing, and seller identity before buying.",
+      "Member-only and cart-only prices are shown as warnings until checkout proof is visible."
+    ]
+  }
+}
