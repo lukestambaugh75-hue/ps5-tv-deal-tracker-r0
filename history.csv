@@ -1,3 +1,5 @@
 date,target_id,retailer,product_name,price,evidence_class,url
 2026-07-01,ps5,Walmart,PlayStation 5 Disc Console Slim - 1TB,649.0,big_box_public_price,https://www.walmart.com/ip/PlayStation-5-Disc-Console-Slim/17816601985
 2026-07-01,tv,Walmart,TCL 65 inch QM6K QD-Mini LED QLED 4K Smart TV,528.0,big_box_public_price,https://www.walmart.com/browse/electronics/65-inch-tvs/tcl/3944_1060825_2489948_3421074/YnJhbmQ6VENM
+2026-07-02,ps5,Target,PlayStation 5 Disc Console 1TB - Fortnite Flowering Chaos Bundle,449.99,big_box_public_price,https://www.target.com/p/playstation-5-1tb-console-fortnite-flowering-chaos-bundle/-/A-94967680
+2026-07-02,tv,Best Buy,TCL 65 inch QM5K Series 4K UHD HDR QD-Mini LED Smart TV with Google TV,449.99,big_box_public_price,https://www.bestbuy.com/site/searchpage.jsp?st=tcl+65+qm5k
