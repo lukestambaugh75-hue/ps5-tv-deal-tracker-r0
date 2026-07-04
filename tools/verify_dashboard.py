@@ -15,6 +15,8 @@ REQUIRED = [
     "Current Retailer Rows",
     "Price History",
     "Evidence Guardrails",
+    "Main Dashboard",
+    "https://lukestambaugh75-hue.github.io/daily-dashboards-public-safe-r0/",
 ]
 FORBIDDEN = ["Andante", "8826"]
 
@@ -49,4 +51,3 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -109,6 +109,8 @@ class TrackerTests(unittest.TestCase):
         self.assertIn("PS5", html)
         self.assertIn("65-inch TV", html)
         self.assertIn("https://lukestambaugh75-hue.github.io/kegerator-tracker-r0/", html)
+        self.assertIn("Main Dashboard", html)
+        self.assertIn("https://lukestambaugh75-hue.github.io/daily-dashboards-public-safe-r0/", html)
         self.assertIn("Price History", html)
         self.assertNotIn("Andante", html)
         self.assertNotIn("8826", html)

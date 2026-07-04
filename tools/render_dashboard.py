@@ -16,6 +16,7 @@ DATA_PATH = os.path.join(ROOT, "data", "deals.json")
 HISTORY_PATH = os.path.join(ROOT, "history.csv")
 OUT_PATH = os.path.join(ROOT, "index.html")
 DEFAULT_DASHBOARD_URL = "https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/"
+MAIN_DASHBOARD_URL = "https://lukestambaugh75-hue.github.io/daily-dashboards-public-safe-r0/"
 
 
 def esc(value):
@@ -154,6 +155,7 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     <div class="wrap hero-content">
       <nav class="tracker-nav" aria-label="Deal Trackers">
         <span>Deal Trackers</span>
+        <a href="{MAIN_DASHBOARD_URL}">Main Dashboard</a>
         <a href="https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/">PS5 + TV</a>
         <a href="https://lukestambaugh75-hue.github.io/kegerator-tracker-r0/">Kegerators</a>
         <a href="https://lukestambaugh75-hue.github.io/ford-raptor-tracker-r0/">Raptor</a>
@@ -166,14 +168,14 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
         <div class="metric"><span class="eyebrow">Tracked Rows</span><strong>{len(items)}</strong><small>Current retailer evidence rows</small></div>
         <div class="metric"><span class="eyebrow">Warnings</span><strong>{len(warnings)}</strong><small>{esc(", ".join(warnings) if warnings else "No warning chips")}</small></div>
       </div>
-      <div class="best-grid">
+      <div class="best-grid" id="best-buys">
         {render_best_card("ps5", "Best Buy Today - PS5", best)}
         {render_best_card("tv", "Best Buy Today - 65-inch TV", best)}
       </div>
     </div>
   </header>
   <main>
-    <section class="section">
+    <section class="section" id="price-ladder">
       <div class="wrap panel">
         <span class="eyebrow">Price ladder</span>
         <h2>Current Retailer Rows</h2>
@@ -183,7 +185,7 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
         </table>
       </div>
     </section>
-    <section class="section">
+    <section class="section" id="price-history">
       <div class="wrap panel">
         <span class="eyebrow">Price History</span>
         <h2>Best Row Trend</h2>
@@ -193,7 +195,7 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
         </table>
       </div>
     </section>
-    <section class="section">
+    <section class="section" id="evidence-guardrails">
       <div class="wrap panel">
         <span class="eyebrow">Run Rules</span>
         <h2>Evidence Guardrails</h2>
