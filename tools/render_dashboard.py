@@ -37,6 +37,17 @@ def render_warning_chips(item):
     return "".join(f'<span class="chip warn">{esc(warning)}</span>' for warning in warnings)
 
 
+def readable_evidence(value):
+    labels = {
+        "big_box_public_price": "big-box public price",
+        "houston_visible_buy_path": "Houston visible buy path",
+        "manufacturer_direct_reference": "manufacturer reference",
+    }
+    if not value:
+        return "evidence pending"
+    return labels.get(value, str(value).replace("_", " "))
+
+
 def render_best_card(target_id, label, best):
     row = best.get(target_id)
     if not row:
@@ -53,10 +64,10 @@ def render_best_card(target_id, label, best):
           <h3>{esc(row.get("retailer"))}: {esc(money(row.get("price")))}</h3>
           <p><a href="{esc(row.get("url"))}">{esc(product)}</a></p>
           <div class="chips">{render_warning_chips(row)}</div>
-          <dl>
+          <dl class="fact-list">
             <div><dt>Availability</dt><dd>{esc(row.get("stock_status") or "check retailer")}</dd></div>
             <div><dt>Pickup / delivery</dt><dd>{esc(row.get("pickup_delivery") or "check retailer")}</dd></div>
-            <div><dt>Evidence</dt><dd>{esc(row.get("evidence_class"))}</dd></div>
+            <div><dt>Evidence</dt><dd>{esc(readable_evidence(row.get("evidence_class")))}</dd></div>
           </dl>
         </article>"""
 
@@ -84,12 +95,22 @@ def render_history_rows(history_rows):
     )
 
 
+def compact_best_summary(best):
+    parts = []
+    for target_id, label in (("ps5", "PS5"), ("tv", "TV")):
+        row = best.get(target_id)
+        if row:
+            parts.append(f"{label}: {row.get('retailer')} {money(row.get('price'))}")
+    return ". ".join(parts) + "." if parts else "Fresh evidence pending."
+
+
 def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_URL):
     history_rows = history_rows if history_rows is not None else read_history()
     best = best_rows_by_target(data)
     items = data.get("items", [])
     generated = data.get("meta", {}).get("generated_at_utc", "not generated")
     summary = data.get("daily_brief", {}).get("summary", "Fresh evidence pending.")
+    mobile_summary = compact_best_summary(best)
     status = data.get("daily_brief", {}).get("fresh_evidence_status", "unknown")
     warnings = data.get("daily_brief", {}).get("warnings", [])
     return f"""<!doctype html>
@@ -114,25 +135,27 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
       --red: #ff8b8b;
     }}
     * {{ box-sizing: border-box; }}
-    body {{ margin: 0; background: var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.5; }}
+    body {{ margin: 0; overflow-x: hidden; background: var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.5; }}
     a {{ color: var(--blue); text-underline-offset: 3px; }}
     .wrap {{ width: min(1180px, calc(100% - 32px)); margin: 0 auto; }}
-    .hero {{ min-height: 560px; display: flex; align-items: flex-end; background: linear-gradient(90deg, rgba(16,19,24,.98), rgba(16,19,24,.82), rgba(16,19,24,.35)), url("assets/electronics-hero.png") center/cover no-repeat; border-bottom: 1px solid var(--line); }}
-    .hero-content {{ padding: 68px 0 38px; max-width: 850px; }}
-    .tracker-nav {{ display: inline-flex; flex-wrap: wrap; gap: 8px; padding: 8px; background: rgba(12,17,24,.78); border: 1px solid var(--line); border-radius: 8px; backdrop-filter: blur(10px); margin-bottom: 12px; }}
+    .hero {{ min-height: 560px; display: flex; align-items: flex-end; background: linear-gradient(90deg, rgba(16,19,24,.98), rgba(16,19,24,.9) 48%, rgba(16,19,24,.48) 78%, rgba(16,19,24,.26)), url("assets/electronics-hero.png") center/cover no-repeat; border-bottom: 1px solid var(--line); }}
+    .hero-content {{ padding: 68px 0 38px; max-width: 900px; }}
+    .tracker-nav {{ display: flex; flex-wrap: wrap; gap: 8px; width: fit-content; max-width: 100%; padding: 8px; background: rgba(12,17,24,.82); border: 1px solid var(--line); border-radius: 8px; backdrop-filter: blur(10px); margin-bottom: 12px; }}
     .tracker-nav span, .tracker-nav a {{ display: inline-flex; align-items: center; min-height: 30px; padding: 4px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: .82rem; font-weight: 800; }}
     .tracker-nav span {{ color: #102016; background: var(--green); }}
     .tracker-nav a {{ border: 1px solid rgba(255,255,255,.08); }}
-    h1 {{ font-size: clamp(2.4rem, 7vw, 5.2rem); line-height: .96; margin: 12px 0 18px; letter-spacing: 0; }}
+    h1 {{ font-size: clamp(2.4rem, 7vw, 5.2rem); line-height: .96; margin: 12px 0 18px; letter-spacing: 0; overflow-wrap: anywhere; }}
     h2 {{ font-size: 1.45rem; margin: 0 0 14px; }}
     h3 {{ margin: 0 0 8px; font-size: 1.15rem; }}
     p {{ margin: 8px 0; }}
     .lead {{ color: var(--muted); font-size: 1.08rem; max-width: 760px; }}
+    .mobile-summary {{ display: none; }}
     .eyebrow {{ color: var(--green); text-transform: uppercase; font-size: .76rem; font-weight: 800; letter-spacing: .08em; }}
     .metrics, .best-grid {{ display: grid; gap: 14px; }}
     .metrics {{ grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 26px; }}
-    .metric, .best-card, .panel {{ background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }}
+    .metric, .best-card, .panel {{ background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow: hidden; }}
     .metric strong {{ display: block; font-size: 1.75rem; margin-top: 4px; }}
+    .metric small {{ overflow-wrap: anywhere; }}
     .best-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 26px 0 0; }}
     .section {{ padding: 32px 0; }}
     .chips {{ display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0; }}
@@ -140,14 +163,32 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     .chip.good {{ color: #17351e; background: var(--green); border-color: var(--green); }}
     .chip.warn {{ color: #2f1e00; background: var(--amber); border-color: var(--amber); }}
     dl {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0 0; }}
+    .fact-list {{ grid-template-columns: 1fr; gap: 8px; }}
+    .fact-list div {{ padding: 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 6px; background: rgba(255,255,255,.035); }}
     dt {{ color: var(--muted); font-size: .78rem; }}
-    dd {{ margin: 0; font-weight: 700; }}
+    dd {{ margin: 0; font-weight: 700; overflow-wrap: anywhere; }}
     table {{ width: 100%; border-collapse: collapse; font-size: .92rem; }}
     th, td {{ text-align: left; padding: 11px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }}
     th {{ color: var(--green); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }}
     .note {{ color: var(--muted); }}
     .footer {{ color: var(--muted); font-size: .85rem; padding: 26px 0 40px; }}
-    @media (max-width: 760px) {{ .metrics, .best-grid, dl {{ grid-template-columns: 1fr; }} .hero {{ min-height: 520px; }} }}
+    @media (max-width: 760px) {{
+      .wrap {{ width: min(1180px, calc(100% - 32px)); }}
+      .hero {{ min-height: auto; align-items: flex-start; background: linear-gradient(180deg, rgba(16,19,24,.97), rgba(16,19,24,.9) 58%, rgba(16,19,24,.7)), url("assets/electronics-hero.png") center/cover no-repeat; }}
+      .wrap.hero-content {{ width: 100%; max-width: 100%; margin: 0 auto; }}
+      .hero-content {{ padding: 32px 16px 26px; }}
+      .tracker-nav {{ display: grid; grid-template-columns: 1fr; width: 100%; }}
+      .tracker-nav span, .tracker-nav a {{ justify-content: center; min-width: 0; min-height: 36px; text-align: center; white-space: normal; }}
+      h1 {{ max-width: 100%; font-size: clamp(1.85rem, 10vw, 2.45rem); line-height: 1; word-break: break-word; }}
+      .lead {{ max-width: 100%; font-size: .96rem; overflow-wrap: anywhere; word-break: break-word; }}
+      .desktop-summary {{ display: none; }}
+      .mobile-summary {{ display: inline; }}
+      .metrics, .best-grid, dl {{ grid-template-columns: 1fr; }}
+      table, thead, tbody, tr, th, td {{ display: block; }}
+      thead {{ display: none; }}
+      td {{ border-bottom: 0; padding: 9px 0; }}
+      tr {{ border-bottom: 1px solid var(--line); padding: 10px 0; }}
+    }}
   </style>
 </head>
 <body>
@@ -160,9 +201,9 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
         <a href="https://lukestambaugh75-hue.github.io/kegerator-tracker-r0/">Kegerators</a>
         <a href="https://lukestambaugh75-hue.github.io/ford-raptor-tracker-r0/">Raptor</a>
       </nav>
-      <span class="eyebrow">Big-box and Houston-area electronics tracker</span>
+      <span class="eyebrow">Electronics price tracker</span>
       <h1>PS5 and 65-inch TV Deal Tracker</h1>
-      <p class="lead">{esc(summary)}</p>
+      <p class="lead"><span class="desktop-summary">{esc(summary)}</span><span class="mobile-summary">{esc(mobile_summary)}</span></p>
       <div class="metrics">
         <div class="metric"><span class="eyebrow">Freshness</span><strong>{esc(status)}</strong><small>Generated {esc(generated)}</small></div>
         <div class="metric"><span class="eyebrow">Tracked Rows</span><strong>{len(items)}</strong><small>Current retailer evidence rows</small></div>
