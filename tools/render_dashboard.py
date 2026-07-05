@@ -144,6 +144,7 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     .tracker-nav span, .tracker-nav a {{ display: inline-flex; align-items: center; min-height: 30px; padding: 4px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: .82rem; font-weight: 800; }}
     .tracker-nav span {{ color: #102016; background: var(--green); }}
     .tracker-nav a {{ border: 1px solid rgba(255,255,255,.08); }}
+    .tracker-nav a.home-link {{ color: #102016; background: var(--green); border-color: var(--green); }}
     h1 {{ font-size: clamp(2.4rem, 7vw, 5.2rem); line-height: .96; margin: 12px 0 18px; letter-spacing: 0; overflow-wrap: anywhere; }}
     h2 {{ font-size: 1.45rem; margin: 0 0 14px; }}
     h3 {{ margin: 0 0 8px; font-size: 1.15rem; }}
@@ -195,8 +196,8 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
   <header class="hero">
     <div class="wrap hero-content">
       <nav class="tracker-nav" aria-label="Deal Trackers">
+        <a class="home-link" href="{MAIN_DASHBOARD_URL}">Main Dashboard</a>
         <span>Deal Trackers</span>
-        <a href="{MAIN_DASHBOARD_URL}">Main Dashboard</a>
         <a href="https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/">PS5 + TV</a>
         <a href="https://lukestambaugh75-hue.github.io/kegerator-tracker-r0/">Kegerators</a>
         <a href="https://lukestambaugh75-hue.github.io/ford-raptor-tracker-r0/">Raptor</a>
