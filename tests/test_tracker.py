@@ -117,6 +117,8 @@ class TrackerTests(unittest.TestCase):
         self.assertIn("Blue", html)
         self.assertIn("Amber", html)
         self.assertIn("Red", html)
+        self.assertIn("information only", html)
+        self.assertIn("not a recommendation", html)
         self.assertNotIn("Andante", html)
         self.assertNotIn("8826", html)
 

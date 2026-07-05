@@ -214,7 +214,7 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
       </div>
       <div class="panel color-index">
         <span class="eyebrow">Color index</span>
-        <p class="note"><strong>Green</strong> means clean buy path, <strong>Blue</strong> marks links and neutral tracker accents, <strong>Amber</strong> means warning chips such as member-only, out-of-stock, or reference-only rows, and <strong>Red</strong> is reserved for blocked, stale, or hard-stop states.</p>
+        <p class="note"><strong>Green</strong> = recommended or ready to act. <strong>Blue</strong> = information only, like links, charts, totals, or neutral controls; it is not a recommendation. <strong>Amber</strong> = caution; check details before acting. <strong>Red</strong> = blocked or stop; do not act until fixed.</p>
       </div>
       <div class="best-grid" id="best-buys">
         {render_best_card("ps5", "Best Buy Today - PS5", best)}
