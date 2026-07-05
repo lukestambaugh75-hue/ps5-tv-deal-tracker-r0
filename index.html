@@ -42,6 +42,8 @@
     .metric, .best-card, .panel { background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow: hidden; }
     .metric strong { display: block; font-size: 1.75rem; margin-top: 4px; }
     .metric small { overflow-wrap: anywhere; }
+    .color-index { margin-top: 14px; background: rgba(101,167,255,.08); }
+    .color-index p { margin-bottom: 0; }
     .best-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 26px 0 0; }
     .section { padding: 32px 0; }
     .chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0; }
@@ -94,6 +96,10 @@
         <div class="metric"><span class="eyebrow">Freshness</span><strong>fresh</strong><small>Generated 2026-07-04T06:02:06Z</small></div>
         <div class="metric"><span class="eyebrow">Tracked Rows</span><strong>17</strong><small>Current retailer evidence rows</small></div>
         <div class="metric"><span class="eyebrow">Warnings</span><strong>4</strong><small>entry-tier TV, manufacturer-direct reference, member-only price, out of stock</small></div>
+      </div>
+      <div class="panel color-index">
+        <span class="eyebrow">Color index</span>
+        <p class="note"><strong>Green</strong> means clean buy path, <strong>Blue</strong> marks links and neutral tracker accents, <strong>Amber</strong> means warning chips such as member-only, out-of-stock, or reference-only rows, and <strong>Red</strong> is reserved for blocked, stale, or hard-stop states.</p>
       </div>
       <div class="best-grid" id="best-buys">
         

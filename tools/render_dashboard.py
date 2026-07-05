@@ -157,6 +157,8 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     .metric, .best-card, .panel {{ background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow: hidden; }}
     .metric strong {{ display: block; font-size: 1.75rem; margin-top: 4px; }}
     .metric small {{ overflow-wrap: anywhere; }}
+    .color-index {{ margin-top: 14px; background: rgba(101,167,255,.08); }}
+    .color-index p {{ margin-bottom: 0; }}
     .best-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 26px 0 0; }}
     .section {{ padding: 32px 0; }}
     .chips {{ display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0; }}
@@ -209,6 +211,10 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
         <div class="metric"><span class="eyebrow">Freshness</span><strong>{esc(status)}</strong><small>Generated {esc(generated)}</small></div>
         <div class="metric"><span class="eyebrow">Tracked Rows</span><strong>{len(items)}</strong><small>Current retailer evidence rows</small></div>
         <div class="metric"><span class="eyebrow">Warnings</span><strong>{len(warnings)}</strong><small>{esc(", ".join(warnings) if warnings else "No warning chips")}</small></div>
+      </div>
+      <div class="panel color-index">
+        <span class="eyebrow">Color index</span>
+        <p class="note"><strong>Green</strong> means clean buy path, <strong>Blue</strong> marks links and neutral tracker accents, <strong>Amber</strong> means warning chips such as member-only, out-of-stock, or reference-only rows, and <strong>Red</strong> is reserved for blocked, stale, or hard-stop states.</p>
       </div>
       <div class="best-grid" id="best-buys">
         {render_best_card("ps5", "Best Buy Today - PS5", best)}

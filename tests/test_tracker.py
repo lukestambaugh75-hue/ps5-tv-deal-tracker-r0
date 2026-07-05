@@ -112,6 +112,11 @@ class TrackerTests(unittest.TestCase):
         self.assertIn("Main Dashboard", html)
         self.assertIn("https://lukestambaugh75-hue.github.io/daily-dashboards-public-safe-r0/", html)
         self.assertIn("Price History", html)
+        self.assertIn("Color index", html)
+        self.assertIn("Green", html)
+        self.assertIn("Blue", html)
+        self.assertIn("Amber", html)
+        self.assertIn("Red", html)
         self.assertNotIn("Andante", html)
         self.assertNotIn("8826", html)
 
