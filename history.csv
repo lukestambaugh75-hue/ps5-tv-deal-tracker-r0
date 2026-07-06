@@ -5,3 +5,5 @@ date,target_id,retailer,product_name,price,evidence_class,url
 2026-07-02,tv,Best Buy,TCL 65 inch QM5K Series 4K UHD HDR QD-Mini LED Smart TV with Google TV,449.99,big_box_public_price,https://www.bestbuy.com/site/searchpage.jsp?st=tcl+65+qm5k
 2026-07-04,ps5,Target,PlayStation 5 Disc Console 1TB - Fortnite Flowering Chaos Bundle,449.99,big_box_public_price,https://www.target.com/s/playstation%2B5%2Bdigital%2Bedition
 2026-07-04,tv,Walmart,Hisense 65 inch M7 Series Mini-LED QLED 4K UHD Google Smart TV,398.0,houston_visible_buy_path,https://www.walmart.com/browse/electronics/65-inch-tvs/3944_1060825_2489948_3421074
+2026-07-06,ps5,Target,PlayStation 5 Digital Edition 825GB - Fortnite Flowering Chaos Bundle,499.99,big_box_public_price,https://www.target.com/p/playstation-5-console-digital-edition/-/A-94961316
+2026-07-06,tv,Sam's Club,VIZIO 65 inch Class Quantum Series QLED Smart TV,328.0,member_only,https://www.samsclub.com/c/kp/65-inch-tv
