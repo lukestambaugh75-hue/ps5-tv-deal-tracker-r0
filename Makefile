@@ -1,7 +1,7 @@
 PY := /usr/bin/python3
 PORT ?= 8766
 
-.PHONY: refresh render history email-content json test verify open serve pages-check public-verify hero
+.PHONY: refresh render history email-content json test check verify open serve pages-check public-verify hero
 
 hero:
 	$(PY) assets/create_hero_asset.py
@@ -26,9 +26,11 @@ json:
 test:
 	$(PY) -m unittest discover -s tests
 
-verify: hero refresh history email-content json test
+check: json test
 	$(PY) tools/verify_dashboard.py
 	git diff --check
+
+verify: check
 
 open:
 	$(PY) tools/serve_dashboard.py --port $(PORT)
@@ -41,4 +43,3 @@ pages-check:
 
 public-verify:
 	$(PY) tools/verify_dashboard.py --public
-

@@ -5,9 +5,36 @@ import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 
 class TrackerTests(unittest.TestCase):
+    def test_check_recipe_excludes_mutating_tracker_commands(self):
+        makefile = Path("Makefile").read_text(encoding="utf-8")
+        lines = makefile.splitlines()
+        try:
+            target_line = next(
+                index for index, line in enumerate(lines) if line.startswith("check:")
+            )
+        except StopIteration:
+            self.fail("Makefile must define a non-mutating check target")
+
+        recipe = []
+        for line in lines[target_line + 1 :]:
+            if line.startswith("\t"):
+                recipe.append(line)
+                continue
+            if line.strip() and not line.startswith(" "):
+                break
+
+        check_contract = "\n".join([lines[target_line], *recipe])
+        for forbidden in (
+            "refresh_prices_browser.py",
+            "append_history.py",
+            "create_hero_asset.py",
+        ):
+            self.assertNotIn(forbidden, check_contract)
+
     def _fresh_evidence(self):
         now = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
         return now, {

@@ -19,9 +19,18 @@ https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/
 ## Run Locally
 
 ```bash
-make verify
+make check
 make open
 ```
+
+`make check` is the safe, non-mutating validation gate. It validates both saved
+JSON inputs, runs the Python tests (including in-memory dashboard and email
+rendering), checks the saved dashboard structure, and finishes with
+`git diff --check`. `make verify` is an alias for the same safe gate.
+
+`make refresh` is deliberately separate and mutating: it applies the saved
+browser evidence to `data/deals.json` and rewrites `index.html`. The scheduled
+run then calls the history and email targets once before using `make check`.
 
 ## Refresh Rules
 
