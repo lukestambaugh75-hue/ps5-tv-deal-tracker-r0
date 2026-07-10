@@ -19,6 +19,22 @@ DATA_PATH = os.path.join(ROOT, "data", "deals.json")
 HISTORY_PATH = os.path.join(ROOT, "history.csv")
 OUT_PATH = os.path.join(ROOT, "index.html")
 DEFAULT_DASHBOARD_URL = "https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/"
+HISTORICAL_SUMMARY = (
+    "Stored values from the last successful refresh are shown for history only. "
+    "They are not current recommendations."
+)
+UNKNOWN_SUMMARY = (
+    "Unverified stored rows have no trustworthy refresh time. "
+    "They are not current recommendations."
+)
+HISTORICAL_WARNING = (
+    "Stored prices and products are from the last successful refresh. "
+    "They are not current recommendations."
+)
+UNKNOWN_WARNING = (
+    "Unverified stored rows - no trustworthy refresh time. "
+    "Prices and products are not current recommendations."
+)
 
 
 def esc(value):
@@ -32,15 +48,23 @@ def read_history(path=HISTORY_PATH):
         return list(csv.DictReader(f))
 
 
-def render_warning_chips(item, actionable=True):
+def render_warning_chips(item, provenance="current"):
     warnings = item.get("warnings") or []
     if not warnings:
-        current_class = "good" if actionable else "historical"
-        current_text = "clean buy path" if actionable else "historical evidence"
+        classes = {
+            "current": "good",
+            "historical": "historical",
+            "unknown": "unverified",
+        }
+        texts = {
+            "current": "clean buy path",
+            "historical": "historical evidence",
+            "unknown": "unverified evidence",
+        }
         return (
-            f'<span class="chip {current_class}" data-fresh-treatment '
-            f'data-fresh-text="clean buy path" data-historical-text="historical evidence">'
-            f"{current_text}</span>"
+            f'<span class="chip {classes[provenance]}" data-fresh-treatment '
+            f'data-fresh-text="clean buy path" data-historical-text="historical evidence" '
+            f'data-unknown-text="unverified evidence">{texts[provenance]}</span>'
         )
     return "".join(f'<span class="chip warn">{esc(warning)}</span>' for warning in warnings)
 
@@ -56,25 +80,35 @@ def readable_evidence(value):
     return labels.get(value, str(value).replace("_", " "))
 
 
-def render_best_card(target_id, label, best, actionable=True):
+def render_best_card(target_id, label, best, provenance="current"):
     row = best.get(target_id)
     fresh_label = f"Best Buy Today - {label}"
     historical_label = f"Best row from last successful refresh - {label}"
-    visible_label = fresh_label if actionable else historical_label
+    unknown_label = f"Unverified stored row - no trustworthy refresh time - {label}"
+    labels = {
+        "current": fresh_label,
+        "historical": historical_label,
+        "unknown": unknown_label,
+    }
+    treatment = {
+        "current": "",
+        "historical": " historical",
+        "unknown": " unverified",
+    }[provenance]
     if not row:
         return f"""
-        <article class="best-card blocked{' historical' if not actionable else ''}" data-recommendation-card>
-          <span class="eyebrow" data-recommendation-label data-fresh-text="{esc(fresh_label)}" data-historical-text="{esc(historical_label)}">{esc(visible_label)}</span>
+        <article class="best-card blocked{treatment}" data-recommendation-card>
+          <span class="eyebrow" data-recommendation-label data-fresh-text="{esc(fresh_label)}" data-historical-text="{esc(historical_label)}" data-unknown-text="{esc(unknown_label)}">{esc(labels[provenance])}</span>
           <h3>No represented row</h3>
           <p>The complete snapshot does not contain an available row for this target.</p>
         </article>"""
     product = row.get("product_name") or row.get("model")
     return f"""
-        <article class="best-card{' historical' if not actionable else ''}" data-recommendation-card>
-          <span class="eyebrow" data-recommendation-label data-fresh-text="{esc(fresh_label)}" data-historical-text="{esc(historical_label)}">{esc(visible_label)}</span>
+        <article class="best-card{treatment}" data-recommendation-card>
+          <span class="eyebrow" data-recommendation-label data-fresh-text="{esc(fresh_label)}" data-historical-text="{esc(historical_label)}" data-unknown-text="{esc(unknown_label)}">{esc(labels[provenance])}</span>
           <h3>{esc(row.get("retailer"))}: {esc(money(row.get("price")))}</h3>
           <p><a href="{esc(row.get("url"))}">{esc(product)}</a></p>
-          <div class="chips">{render_warning_chips(row, actionable=actionable)}</div>
+          <div class="chips">{render_warning_chips(row, provenance=provenance)}</div>
           <dl class="fact-list">
             <div><dt>Availability</dt><dd>{esc(row.get("stock_status") or "check retailer")}</dd></div>
             <div><dt>Pickup / delivery</dt><dd>{esc(row.get("pickup_delivery") or "check retailer")}</dd></div>
@@ -83,7 +117,7 @@ def render_best_card(target_id, label, best, actionable=True):
         </article>"""
 
 
-def render_item_row(item, actionable=True):
+def render_item_row(item, provenance="current"):
     product = item.get("product_name") or item.get("model")
     return f"""
           <tr>
@@ -92,7 +126,7 @@ def render_item_row(item, actionable=True):
             <td><a href="{esc(item.get("url"))}">{esc(product)}</a></td>
             <td>{esc(money(item.get("price")))}</td>
             <td>{esc(item.get("stock_status") or "-")}</td>
-            <td>{render_warning_chips(item, actionable=actionable)}</td>
+            <td>{render_warning_chips(item, provenance=provenance)}</td>
           </tr>"""
 
 
@@ -136,14 +170,38 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     status = refresh["state"]
     represented = snapshot_is_represented(data)
     actionable = status in {"Fresh", "Due"} and represented
-    historical_summary = (
-        "Stored values from the last successful refresh are shown for history only. "
-        "They are not current recommendations."
-    )
-    visible_summary = summary if actionable else historical_summary
-    visible_mobile_summary = mobile_summary if actionable else historical_summary
-    row_heading = "Current Retailer Rows" if actionable else "Stored Retailer Rows"
-    row_metric = "Current retailer evidence rows" if actionable else "Stored retailer evidence rows"
+    provenance = "current" if actionable else "unknown" if status == "Unknown" else "historical"
+    visible_summary = {
+        "current": summary,
+        "historical": HISTORICAL_SUMMARY,
+        "unknown": UNKNOWN_SUMMARY,
+    }[provenance]
+    visible_mobile_summary = {
+        "current": mobile_summary,
+        "historical": HISTORICAL_SUMMARY,
+        "unknown": UNKNOWN_SUMMARY,
+    }[provenance]
+    row_heading = {
+        "current": "Current Retailer Rows",
+        "historical": "Stored Retailer Rows",
+        "unknown": "Unverified Stored Rows",
+    }[provenance]
+    row_metric = {
+        "current": "Current retailer evidence rows",
+        "historical": "Stored retailer evidence rows",
+        "unknown": "Unverified stored rows",
+    }[provenance]
+    provenance_warning = {
+        "current": HISTORICAL_WARNING,
+        "historical": HISTORICAL_WARNING,
+        "unknown": UNKNOWN_WARNING,
+    }[provenance]
+    body_classes = []
+    if not actionable:
+        body_classes.append("recommendations-historical")
+    if provenance == "unknown":
+        body_classes.append("recommendations-unverified")
+    body_class_attr = f' class="{" ".join(body_classes)}"' if body_classes else ""
     warnings = data.get("daily_brief", {}).get("warnings", [])
     rendered_at = utc_iso(now)
     published_at = data.get("refresh", {}).get("published_at_utc")
@@ -215,7 +273,9 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     .chip.good {{ color: #17351e; background: var(--green); border-color: var(--green); }}
     .chip.warn {{ color: #2f1e00; background: var(--amber); border-color: var(--amber); }}
     .chip.historical {{ color: var(--muted); background: rgba(255,203,107,.1); border-color: var(--amber); }}
+    .chip.unverified {{ color: var(--muted); background: rgba(184,195,214,.08); border-color: var(--muted); }}
     .best-card.historical {{ border-color: rgba(255,203,107,.72); box-shadow: inset 0 3px 0 rgba(255,203,107,.32); }}
+    .best-card.unverified {{ border-color: var(--muted); box-shadow: inset 0 3px 0 rgba(184,195,214,.24); }}
     .historical-warning {{ margin: 12px 0 18px; padding: 11px 13px; color: var(--amber); background: rgba(255,203,107,.08); border: 1px solid rgba(255,203,107,.45); border-radius: 6px; }}
     .historical-warning[hidden] {{ display: none; }}
     dl {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0 0; }}
@@ -227,6 +287,7 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     th, td {{ text-align: left; padding: 11px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }}
     th {{ color: var(--green); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }}
     body.recommendations-historical [data-recommendation-label], body.recommendations-historical #price-ladder th {{ color: var(--amber); }}
+    body.recommendations-unverified [data-recommendation-label], body.recommendations-unverified #price-ladder th {{ color: var(--muted); }}
     .note {{ color: var(--muted); }}
     .footer {{ color: var(--muted); font-size: .85rem; padding: 26px 0 40px; }}
     @media (max-width: 760px) {{
@@ -246,15 +307,15 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     }}
   </style>
 </head>
-<body{' class="recommendations-historical"' if not actionable else ''}>
+<body{body_class_attr}>
   <header class="hero">
     <div class="wrap hero-content">
       <span class="eyebrow">Electronics price tracker</span>
       <h1>PS5 and 65-inch TV Deal Tracker</h1>
-      <p class="lead"><span class="desktop-summary" data-recommendation-summary data-fresh-text="{esc(summary)}" data-historical-text="{esc(historical_summary)}">{esc(visible_summary)}</span><span class="mobile-summary" data-recommendation-summary data-fresh-text="{esc(mobile_summary)}" data-historical-text="{esc(historical_summary)}">{esc(visible_mobile_summary)}</span></p>
+      <p class="lead"><span class="desktop-summary" data-recommendation-summary data-fresh-text="{esc(summary)}" data-historical-text="{esc(HISTORICAL_SUMMARY)}" data-unknown-text="{esc(UNKNOWN_SUMMARY)}">{esc(visible_summary)}</span><span class="mobile-summary" data-recommendation-summary data-fresh-text="{esc(mobile_summary)}" data-historical-text="{esc(HISTORICAL_SUMMARY)}" data-unknown-text="{esc(UNKNOWN_SUMMARY)}">{esc(visible_mobile_summary)}</span></p>
       <div class="metrics">
-        <div class="metric"><span class="eyebrow">Data state</span><strong>{esc(status)}</strong><small>Derived from the last successful source evidence</small></div>
-        <div class="metric"><span class="eyebrow">Tracked Rows</span><strong>{len(items)}</strong><small data-row-metric data-fresh-text="Current retailer evidence rows" data-historical-text="Stored retailer evidence rows">{esc(row_metric)}</small></div>
+        <div class="metric"><span class="eyebrow">Data state</span><strong id="hero-data-state">{esc(status)}</strong><small>Derived from source refresh evidence</small></div>
+        <div class="metric"><span class="eyebrow">Tracked Rows</span><strong>{len(items)}</strong><small data-row-metric data-fresh-text="Current retailer evidence rows" data-historical-text="Stored retailer evidence rows" data-unknown-text="Unverified stored rows">{esc(row_metric)}</small></div>
         <div class="metric"><span class="eyebrow">Warnings</span><strong>{len(warnings)}</strong><small>{esc(", ".join(warnings) if warnings else "No warning chips")}</small></div>
       </div>
       <section
@@ -293,8 +354,8 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
         <p class="note"><strong>Green</strong> = recommended or ready to act. <strong>Blue</strong> = information only, like links, charts, totals, or neutral controls; it is not a recommendation. <strong>Amber</strong> = caution; check details before acting. <strong>Red</strong> = blocked or stop; do not act until fixed.</p>
       </div>
       <div class="best-grid" id="best-buys">
-        {render_best_card("ps5", "PS5", best, actionable=actionable)}
-        {render_best_card("tv", "65-inch TV", best, actionable=actionable)}
+        {render_best_card("ps5", "PS5", best, provenance=provenance)}
+        {render_best_card("tv", "65-inch TV", best, provenance=provenance)}
       </div>
     </div>
   </header>
@@ -302,11 +363,11 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     <section class="section" id="price-ladder">
       <div class="wrap panel">
         <span class="eyebrow">Price ladder</span>
-        <h2 data-retailer-heading data-fresh-text="Current Retailer Rows" data-historical-text="Stored Retailer Rows">{esc(row_heading)}</h2>
-        <p id="historical-warning" class="historical-warning"{' hidden' if actionable else ''}>Stored prices and products are from the last successful refresh. They are not current recommendations.</p>
+        <h2 data-retailer-heading data-fresh-text="Current Retailer Rows" data-historical-text="Stored Retailer Rows" data-unknown-text="Unverified Stored Rows">{esc(row_heading)}</h2>
+        <p id="historical-warning" class="historical-warning" data-historical-text="{esc(HISTORICAL_WARNING)}" data-unknown-text="{esc(UNKNOWN_WARNING)}"{' hidden' if actionable else ''}>{esc(provenance_warning)}</p>
         <table>
           <thead><tr><th>Target</th><th>Retailer</th><th>Product</th><th>Price</th><th>Stock</th><th>Warnings</th></tr></thead>
-          <tbody>{''.join(render_item_row(item, actionable=actionable) for item in items) or '<tr><td colspan="6">Evidence pending.</td></tr>'}</tbody>
+          <tbody>{''.join(render_item_row(item, provenance=provenance) for item in items) or '<tr><td colspan="6">Evidence pending.</td></tr>'}</tbody>
         </table>
       </div>
     </section>
@@ -336,6 +397,7 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
       const root = document.querySelector("[data-refresh-root]");
       if (!root) return;
       const stateNode = document.getElementById("refresh-status");
+      const heroStateNode = document.getElementById("hero-data-state");
       const ageNode = document.getElementById("refresh-age");
       const reasonNode = document.getElementById("refresh-reason");
       const successAt = Date.parse(root.dataset.successAt || "");
@@ -362,23 +424,31 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
       }};
       const applyRecommendationState = (state) => {{
         const actionable = represented && ["Fresh", "Due"].includes(state);
+        const mode = actionable ? "fresh" : state === "Unknown" ? "unknown" : "historical";
         document.body.classList.toggle("recommendations-historical", !actionable);
+        document.body.classList.toggle("recommendations-unverified", mode === "unknown");
         document.querySelectorAll("[data-recommendation-label], [data-recommendation-summary], [data-retailer-heading], [data-row-metric]").forEach((node) => {{
-          node.textContent = actionable ? node.dataset.freshText : node.dataset.historicalText;
+          node.textContent = mode === "fresh" ? node.dataset.freshText : mode === "unknown" ? node.dataset.unknownText : node.dataset.historicalText;
         }});
         document.querySelectorAll("[data-recommendation-card]").forEach((card) => {{
-          card.classList.toggle("historical", !actionable);
+          card.classList.toggle("historical", mode === "historical");
+          card.classList.toggle("unverified", mode === "unknown");
         }});
         document.querySelectorAll("[data-fresh-treatment]").forEach((chip) => {{
-          chip.classList.toggle("good", actionable);
-          chip.classList.toggle("historical", !actionable);
-          chip.textContent = actionable ? chip.dataset.freshText : chip.dataset.historicalText;
+          chip.classList.toggle("good", mode === "fresh");
+          chip.classList.toggle("historical", mode === "historical");
+          chip.classList.toggle("unverified", mode === "unknown");
+          chip.textContent = mode === "fresh" ? chip.dataset.freshText : mode === "unknown" ? chip.dataset.unknownText : chip.dataset.historicalText;
         }});
         const warning = document.getElementById("historical-warning");
-        if (warning) warning.hidden = actionable;
+        if (warning) {{
+          warning.hidden = actionable;
+          warning.textContent = mode === "unknown" ? warning.dataset.unknownText : warning.dataset.historicalText;
+        }}
       }};
       const applyState = (state, reason, age) => {{
         stateNode.textContent = state;
+        heroStateNode.textContent = state;
         stateNode.className = `state-badge ${{state.toLowerCase()}}`;
         ageNode.textContent = age;
         reasonNode.textContent = reason;

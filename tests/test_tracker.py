@@ -509,6 +509,7 @@ hidden-mutations:
         )
 
         self.assertIn('id="refresh-status"', html_text)
+        self.assertIn('id="hero-data-state"', html_text)
         self.assertIn("Last successful data refresh", html_text)
         self.assertIn("Jul 1, 2026 7:00 AM CDT", html_text)
         self.assertIn("Age", html_text)
@@ -521,6 +522,7 @@ hidden-mutations:
         self.assertIn("data-refresh-hydration", html_text)
         self.assertIn('"state": "Fresh"', html_text)
         self.assertIn("applyRecommendationState", html_text)
+        self.assertIn("heroStateNode.textContent = state", html_text)
 
     def test_future_success_stays_unknown_in_static_and_hydrated_state(self):
         from tools.render_dashboard import render_dashboard
@@ -535,8 +537,35 @@ hidden-mutations:
         self.assertIn('id="refresh-status" class="state-badge unknown"', html_text)
         self.assertIn('<dd id="refresh-age">Unknown</dd>', html_text)
         self.assertIn('"state": "Unknown"', html_text)
+        self.assertIn(
+            ">Unverified stored row - no trustworthy refresh time - PS5</span>",
+            html_text,
+        )
+        self.assertIn(
+            "Unverified stored rows have no trustworthy refresh time. They are not current recommendations.",
+            html_text,
+        )
+        self.assertNotIn(">Best row from last successful refresh", html_text)
+        self.assertNotIn(">Stored values from the last successful refresh", html_text)
         self.assertIn("if (elapsed < 0)", html_text)
         self.assertIn('applyState("Unknown"', html_text)
+        self.assertIn("node.dataset.unknownText", html_text)
+
+    def test_no_success_dashboard_uses_unverified_provenance(self):
+        from tools.render_dashboard import render_dashboard
+
+        now = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+
+        html_text = render_dashboard(self._seed_data(), history_rows=[], now=now)
+
+        self.assertIn(
+            ">Unverified stored row - no trustworthy refresh time - PS5</span>",
+            html_text,
+        )
+        self.assertIn("Unverified stored rows have no trustworthy refresh time", html_text)
+        self.assertIn("no trustworthy refresh time", html_text)
+        self.assertNotIn(">Best row from last successful refresh", html_text)
+        self.assertNotIn(">Stored values from the last successful refresh", html_text)
 
     def test_stale_dashboard_labels_preserved_values_as_historical(self):
         from tools.render_dashboard import render_dashboard
