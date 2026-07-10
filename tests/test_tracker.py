@@ -2,6 +2,7 @@ import csv
 import io
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -9,29 +10,60 @@ from pathlib import Path
 
 
 class TrackerTests(unittest.TestCase):
-    def test_check_recipe_excludes_mutating_tracker_commands(self):
-        makefile = Path("Makefile").read_text(encoding="utf-8")
-        lines = makefile.splitlines()
-        try:
-            target_line = next(
-                index for index, line in enumerate(lines) if line.startswith("check:")
+    def _check_commands_from_makefile(self, makefile_path):
+        makefile = Path(makefile_path).resolve()
+        completed = subprocess.run(
+            [
+                "make",
+                "--no-builtin-rules",
+                "--dry-run",
+                "--file",
+                str(makefile),
+                "check",
+            ],
+            cwd=makefile.parent,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        return completed.stdout
+
+    def test_check_command_expansion_includes_mutating_prerequisites(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            makefile = Path(tmp, "Makefile")
+            makefile.write_text(
+                """check: hidden-mutations
+
+hidden-mutations:
+\t/usr/bin/python3 tools/refresh_prices_browser.py
+\t/usr/bin/python3 tools/append_history.py
+\t/usr/bin/python3 assets/create_hero_asset.py
+\t/usr/bin/python3 tools/render_dashboard.py
+\t/usr/bin/python3 tools/build_email.py
+""",
+                encoding="utf-8",
             )
-        except StopIteration:
-            self.fail("Makefile must define a non-mutating check target")
+            expanded = self._check_commands_from_makefile(makefile)
 
-        recipe = []
-        for line in lines[target_line + 1 :]:
-            if line.startswith("\t"):
-                recipe.append(line)
-                continue
-            if line.strip() and not line.startswith(" "):
-                break
+        for expected in (
+            "refresh_prices_browser.py",
+            "append_history.py",
+            "create_hero_asset.py",
+            "render_dashboard.py",
+            "build_email.py",
+        ):
+            self.assertIn(expected, expanded)
 
-        check_contract = "\n".join([lines[target_line], *recipe])
+    def test_check_dry_run_excludes_mutating_tracker_commands(self):
+        check_contract = self._check_commands_from_makefile("Makefile")
+
         for forbidden in (
             "refresh_prices_browser.py",
             "append_history.py",
             "create_hero_asset.py",
+            "render_dashboard.py",
+            "build_email.py",
         ):
             self.assertNotIn(forbidden, check_contract)
 
