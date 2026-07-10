@@ -3,6 +3,7 @@ import io
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -10,6 +11,8 @@ from pathlib import Path
 
 
 class TrackerTests(unittest.TestCase):
+    DASHBOARD_URL = "https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/"
+
     def _check_commands_from_makefile(self, makefile_path):
         makefile = Path(makefile_path).resolve()
         completed = subprocess.run(
@@ -121,6 +124,56 @@ hidden-mutations:
             "daily_brief": {"summary": "Seed data pending fresh evidence.", "warnings": []},
         }
 
+    def _write_guard_fixture(self, directory, html_text, data, payload):
+        directory = Path(directory)
+        html_path = directory / "index.html"
+        data_path = directory / "deals.json"
+        email_path = directory / "latest-email.json"
+        html_path.write_text(html_text, encoding="utf-8")
+        data_path.write_text(json.dumps(data), encoding="utf-8")
+        email_path.write_text(json.dumps(payload), encoding="utf-8")
+        return html_path, data_path, email_path
+
+    def _run_guard(self, html_text, data, payload):
+        with tempfile.TemporaryDirectory() as tmp:
+            html_path, data_path, email_path = self._write_guard_fixture(
+                tmp, html_text, data, payload
+            )
+            return subprocess.run(
+                [
+                    sys.executable,
+                    "tools/audience_guard.py",
+                    "--html",
+                    str(html_path),
+                    "--data",
+                    str(data_path),
+                    "--email",
+                    str(email_path),
+                ],
+                cwd=Path(__file__).resolve().parents[1],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+    def _audience_fixture(self):
+        from tools.build_email import build_payload
+        from tools.tracker_core import apply_evidence
+
+        now, evidence = self._fresh_evidence()
+        data = apply_evidence(self._seed_data(), evidence, now=now)
+        first_product_url = data["items"][0]["url"]
+        html_text = f"""<!doctype html>
+<html lang="en">
+<head><style>.hero {{ background-image: url('assets/electronics-hero.png'); }}</style></head>
+<body>
+  <a href="{self.DASHBOARD_URL}">PS5 and TV Deal Tracker</a>
+  <a href="{first_product_url}">Current retailer product</a>
+</body>
+</html>"""
+        payload = build_payload(data, self.DASHBOARD_URL)
+        return data, html_text, payload
+
     def test_stale_evidence_is_rejected(self):
         from tools.tracker_core import validate_evidence
 
@@ -148,13 +201,163 @@ hidden-mutations:
 
         now, evidence = self._fresh_evidence()
         data = apply_evidence(self._seed_data(), evidence, now=now)
-        payload = build_payload(data, "https://example.com/dashboard")
+        payload = build_payload(data, self.DASHBOARD_URL)
 
         self.assertEqual(payload["to"], ["lukestambaugh75@gmail.com", "devin.mullen89@gmail.com"])
         self.assertEqual(payload["cc"], [])
         self.assertEqual(payload["bcc"], [])
         self.assertIn("PS5", payload["subject"])
-        self.assertIn("https://example.com/dashboard", payload["body_text"])
+        self.assertIn(self.DASHBOARD_URL, payload["body_text"])
+
+    def test_email_payload_rejects_a_non_ps5_dashboard_url(self):
+        from tools.audience_guard import AudienceBoundaryError
+        from tools.build_email import build_payload
+        from tools.tracker_core import apply_evidence
+
+        now, evidence = self._fresh_evidence()
+        data = apply_evidence(self._seed_data(), evidence, now=now)
+
+        with self.assertRaisesRegex(AudienceBoundaryError, "dashboard_url"):
+            build_payload(data, "https://evil.example/dashboard")
+
+    def test_audience_guard_accepts_only_the_ps5_page_current_products_and_local_assets(self):
+        data, html_text, payload = self._audience_fixture()
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("audience boundary passed", completed.stdout)
+
+    def test_audience_guard_rejects_external_href(self):
+        data, html_text, payload = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>", '<a href="https://evil.example/hub">Main Dashboard</a></body>'
+        )
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("audience boundary violation", completed.stderr)
+        self.assertIn("evil.example", completed.stderr)
+
+    def test_audience_guard_rejects_external_src(self):
+        data, html_text, payload = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>", '<img src="https://evil.example/pixel.png" alt=""></body>'
+        )
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("audience boundary violation", completed.stderr)
+        self.assertIn("evil.example", completed.stderr)
+
+    def test_audience_guard_rejects_external_css_url(self):
+        data, html_text, payload = self._audience_fixture()
+        html_text = html_text.replace(
+            "</head>",
+            '<style>.leak { background: url("https://evil.example/tracker.png"); }</style></head>',
+        )
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("audience boundary violation", completed.stderr)
+        self.assertIn("evil.example", completed.stderr)
+
+    def test_audience_guard_rejects_script_redirect(self):
+        data, html_text, payload = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>",
+            '<script>window.location.href = "https://evil.example/dashboard";</script></body>',
+        )
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("audience boundary violation", completed.stderr)
+        self.assertIn("redirect", completed.stderr.lower())
+
+    def test_audience_guard_rejects_external_email_url(self):
+        data, html_text, payload = self._audience_fixture()
+        payload["body_text"] += "\nOther dashboard: https://evil.example/dashboard"
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("audience boundary violation", completed.stderr)
+        self.assertIn("evil.example", completed.stderr)
+
+    def test_audience_guard_rejects_changed_recipients_or_copy_lists(self):
+        data, html_text, payload = self._audience_fixture()
+        payload["to"] = ["lukestambaugh75@gmail.com"]
+        payload["cc"] = ["other@example.com"]
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("audience boundary violation", completed.stderr)
+        self.assertIn("recipients", completed.stderr.lower())
+
+    def test_local_dashboard_verifier_runs_the_generated_output_guard(self):
+        from tools.render_dashboard import render_dashboard
+
+        data, _, payload = self._audience_fixture()
+        dashboard = render_dashboard(data, history_rows=[])
+        with tempfile.TemporaryDirectory() as tmp:
+            html_path, data_path, email_path = self._write_guard_fixture(
+                tmp, dashboard, data, payload
+            )
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "tools/verify_dashboard.py",
+                    "--input",
+                    str(html_path),
+                    "--data",
+                    str(data_path),
+                    "--email",
+                    str(email_path),
+                ],
+                cwd=Path(__file__).resolve().parents[1],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("dashboard verification passed", completed.stdout)
+
+    def test_public_checker_local_mode_rejects_cross_dashboard_output_without_network(self):
+        from tools.render_dashboard import render_dashboard
+
+        data, _, payload = self._audience_fixture()
+        dashboard = render_dashboard(data, history_rows=[]).replace(
+            "</body>", '<a href="https://evil.example/dashboard">Other</a></body>'
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            html_path, data_path, _ = self._write_guard_fixture(tmp, dashboard, data, payload)
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "tools/check_public_pages.py",
+                    "--local",
+                    "--input",
+                    str(html_path),
+                    "--data",
+                    str(data_path),
+                ],
+                cwd=Path(__file__).resolve().parents[1],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+        self.assertEqual(completed.returncode, 1)
+        result = json.loads(completed.stdout)
+        self.assertEqual(result["source"], "local")
+        self.assertFalse(result["ok"])
+        self.assertIn("evil.example", result["error"])
 
     def test_dashboard_contains_core_sections_and_no_raw_home_address(self):
         from tools.render_dashboard import render_dashboard
@@ -162,14 +365,16 @@ hidden-mutations:
 
         now, evidence = self._fresh_evidence()
         data = apply_evidence(self._seed_data(), evidence, now=now)
-        html = render_dashboard(data, history_rows=[], dashboard_url="https://example.com/dashboard")
+        html = render_dashboard(data, history_rows=[], dashboard_url=self.DASHBOARD_URL)
 
         self.assertIn("Best Buy Today", html)
         self.assertIn("PS5", html)
         self.assertIn("65-inch TV", html)
-        self.assertIn("https://lukestambaugh75-hue.github.io/kegerator-tracker-r0/", html)
-        self.assertIn("Main Dashboard", html)
-        self.assertIn("https://lukestambaugh75-hue.github.io/daily-dashboards-public-safe-r0/", html)
+        self.assertNotIn("https://lukestambaugh75-hue.github.io/kegerator-tracker-r0/", html)
+        self.assertNotIn("https://lukestambaugh75-hue.github.io/ford-raptor-tracker-r0/", html)
+        self.assertNotIn("Main Dashboard", html)
+        self.assertNotIn("Deal Trackers", html)
+        self.assertNotIn("https://lukestambaugh75-hue.github.io/daily-dashboards-public-safe-r0/", html)
         self.assertIn("Price History", html)
         self.assertIn("Color index", html)
         self.assertIn("Green", html)

@@ -1,6 +1,7 @@
 # PS5 and TV Deal Tracker r0
 
-Public dashboard and scheduled email automation for PS5 and 60-70 inch TV deals.
+Standalone direct-link dashboard and scheduled email automation for PS5 and
+60-70 inch TV deals.
 
 Live dashboard:
 
@@ -16,6 +17,22 @@ https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/
 - Recipients: `lukestambaugh75@gmail.com` and `devin.mullen89@gmail.com` only, no CC/BCC.
 - Schedule: 6:00 AM Central every other day.
 
+## Audience Boundary
+
+This tracker is deliberately separate from every other dashboard. The rendered
+page has no shared-hub navigation and no links to Ford/Raptor, Kegerator, or any
+other tracker. Its only outbound links are the PS5/TV page itself and exact
+retailer/product URLs present in `data/deals.json`. Page images and other loaded
+resources must be local files under `assets/`.
+
+The generated email is equally narrow: exactly Luke and Devin in `to`, empty
+`cc` and `bcc`, and only the PS5/TV page or current retailer/product URLs. Run
+the boundary gate directly with:
+
+```bash
+/usr/bin/python3 tools/audience_guard.py
+```
+
 ## Run Locally
 
 ```bash
@@ -24,9 +41,15 @@ make open
 ```
 
 `make check` is the safe, non-mutating validation gate. It validates both saved
-JSON inputs, runs the Python tests (including in-memory dashboard and email
-rendering), checks the saved dashboard structure, and finishes with
-`git diff --check`. `make verify` is an alias for the same safe gate.
+JSON inputs, runs the Python tests (including hostile URL fixtures), checks the
+saved dashboard and generated email against the audience boundary, and finishes
+with `git diff --check`. `make verify` is an alias for the same safe gate.
+
+For a network-free GitHub Pages check against the saved page, run:
+
+```bash
+/usr/bin/python3 tools/check_public_pages.py --local
+```
 
 `make refresh` is deliberately separate and mutating: it applies the saved
 browser evidence to `data/deals.json` and rewrites `index.html`. The scheduled
@@ -56,6 +79,7 @@ Evidence classes are visible on the dashboard:
 - `index.html` - rendered public dashboard.
 - `out/latest-email.json` - generated email payload for the browser Gmail send.
 - `automation/ps5-tv-deal-tracker-email.toml` - repo mirror of the Codex automation.
+- `tools/audience_guard.py` - exact recipient, URL, navigation, and local-asset gate.
 - `tools/*.py` - refresh, render, email, history, and verification scripts.
 
 Prices and stock are point-in-time evidence. Confirm cart total, tax, pickup/delivery timing, and seller identity before buying.

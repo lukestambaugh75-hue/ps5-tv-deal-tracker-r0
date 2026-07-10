@@ -8,8 +8,10 @@ from datetime import datetime, timezone
 
 try:
     from .tracker_core import best_rows_by_target, money
+    from .audience_guard import validate_email_payload
 except ImportError:
     from tracker_core import best_rows_by_target, money
+    from audience_guard import validate_email_payload
 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -64,7 +66,7 @@ def build_payload(data, dashboard_url=DEFAULT_DASHBOARD_URL):
         f"<p>Dashboard: <a href='{html.escape(dashboard_url)}'>{html.escape(dashboard_url)}</a></p>",
         f"<p style='color:#666;font-size:12px'>Generated: {html.escape(generated)}. Confirm final cart total, tax, pickup/delivery timing, and seller identity before buying.</p>",
     ]
-    return {
+    payload = {
         "to": RECIPIENTS[:],
         "cc": [],
         "bcc": [],
@@ -74,6 +76,8 @@ def build_payload(data, dashboard_url=DEFAULT_DASHBOARD_URL):
         "dashboard_url": dashboard_url,
         "generated_at": generated,
     }
+    validate_email_payload(payload, data)
+    return payload
 
 
 def main():
@@ -92,4 +96,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

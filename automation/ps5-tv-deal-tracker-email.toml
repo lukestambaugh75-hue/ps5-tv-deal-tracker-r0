@@ -12,6 +12,12 @@ This automation is explicitly approved to email exactly these two recipients:
 
 Do not add CC or BCC. This approval is scoped only to this PS5 and TV tracker.
 
+Audience boundary: this is a standalone direct-link tracker. Do not add a
+shared dashboard hub, Ford/Raptor, Kegerator, or other tracker link to the page
+or email. The page and email may link only to the PS5/TV dashboard itself and
+exact retailer/product URLs in the current `data/deals.json`. Loaded page
+assets must be local files under `assets/`.
+
 Required run order:
 1. Run `git pull --ff-only`.
 2. Gather fresh live web or browser-visible evidence for the PS5 target and the 60-70 inch TV target, defaulting to a 65-inch mid-quality 4K smart TV. Prefer big-box retailers and Houston-area pickup/delivery paths. Check Best Buy, Walmart, Target, Costco, Sam's Club, Amazon, GameStop, Sony Direct, Home Depot, and any clearly Houston-area big-box purchase path that appears during the run.
@@ -21,13 +27,14 @@ Required run order:
 6. Run `/usr/bin/python3 tools/render_dashboard.py`.
 7. Run `/usr/bin/python3 tools/append_history.py`.
 8. Run `/usr/bin/python3 tools/build_email.py --output-dir out`.
-9. Run `make check`. This is the non-mutating validation gate; do not run `make refresh` or `make verify` again because steps 5-8 already performed each write exactly once.
-10. If tracked files changed and the branch is `main`, stage only touched repo files, commit with a clear one-line message, and push to origin. Do not force-push.
-11. Run `make pages-check`. If GitHub Pages is not current yet, wait and retry.
-12. Run `make public-verify`.
-13. Read `out/latest-email.json` and send one Gmail email using the signed-in Chrome/Gmail browser route. Address it exactly to `lukestambaugh75@gmail.com` and `devin.mullen89@gmail.com`, with no CC/BCC, using the generated subject and body. Include the public dashboard link `https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/`.
-14. Before sending, visibly verify the two recipient chips, no CC/BCC, subject, body, and dashboard link.
-15. After the email attempt is complete, stop and wait for the next scheduled run.
+9. Run `/usr/bin/python3 tools/audience_guard.py`. Stop without publishing or emailing if it reports any audience-boundary violation.
+10. Run `make check`. This is the non-mutating validation gate; do not run `make refresh` or `make verify` again because steps 5-8 already performed each write exactly once.
+11. If tracked files changed and the branch is `main`, stage only touched repo files, commit with a clear one-line message, and push to origin. Do not force-push.
+12. Run `make pages-check`. If GitHub Pages is not current yet, wait and retry.
+13. Run `make public-verify`.
+14. Read `out/latest-email.json` and send one Gmail email using the signed-in Chrome/Gmail browser route. Address it exactly to `lukestambaugh75@gmail.com` and `devin.mullen89@gmail.com`, with no CC/BCC, using the generated subject and body. Include the public dashboard link `https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/` and no other dashboard link.
+15. Before sending, visibly verify the two recipient chips, no CC/BCC, subject, body, dashboard link, and absence of any other dashboard link.
+16. After the email attempt is complete, stop and wait for the next scheduled run.
 
 Do not purchase anything or contact sellers. Confirm final cart total, tax, pickup/delivery timing, and seller identity before buying."""
 status = "ACTIVE"

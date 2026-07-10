@@ -16,7 +16,6 @@ DATA_PATH = os.path.join(ROOT, "data", "deals.json")
 HISTORY_PATH = os.path.join(ROOT, "history.csv")
 OUT_PATH = os.path.join(ROOT, "index.html")
 DEFAULT_DASHBOARD_URL = "https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/"
-MAIN_DASHBOARD_URL = "https://lukestambaugh75-hue.github.io/daily-dashboards-public-safe-r0/"
 
 
 def esc(value):
@@ -140,11 +139,6 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     .wrap {{ width: min(1180px, calc(100% - 32px)); margin: 0 auto; }}
     .hero {{ min-height: 560px; display: flex; align-items: flex-end; background: linear-gradient(90deg, rgba(16,19,24,.98), rgba(16,19,24,.9) 48%, rgba(16,19,24,.48) 78%, rgba(16,19,24,.26)), url("assets/electronics-hero.png") center/cover no-repeat; border-bottom: 1px solid var(--line); }}
     .hero-content {{ padding: 68px 0 38px; max-width: 900px; }}
-    .tracker-nav {{ display: flex; flex-wrap: wrap; gap: 8px; width: fit-content; max-width: 100%; padding: 8px; background: rgba(12,17,24,.82); border: 1px solid var(--line); border-radius: 8px; backdrop-filter: blur(10px); margin-bottom: 12px; }}
-    .tracker-nav span, .tracker-nav a {{ display: inline-flex; align-items: center; min-height: 30px; padding: 4px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: .82rem; font-weight: 800; }}
-    .tracker-nav span {{ color: #102016; background: var(--green); }}
-    .tracker-nav a {{ border: 1px solid rgba(255,255,255,.08); }}
-    .tracker-nav a.home-link {{ color: #102016; background: var(--green); border-color: var(--green); }}
     h1 {{ font-size: clamp(2.4rem, 7vw, 5.2rem); line-height: .96; margin: 12px 0 18px; letter-spacing: 0; overflow-wrap: anywhere; }}
     h2 {{ font-size: 1.45rem; margin: 0 0 14px; }}
     h3 {{ margin: 0 0 8px; font-size: 1.15rem; }}
@@ -180,8 +174,6 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
       .hero {{ min-height: auto; align-items: flex-start; background: linear-gradient(180deg, rgba(16,19,24,.97), rgba(16,19,24,.9) 58%, rgba(16,19,24,.7)), url("assets/electronics-hero.png") center/cover no-repeat; }}
       .wrap.hero-content {{ width: 100%; max-width: 100%; margin: 0 auto; }}
       .hero-content {{ padding: 32px 16px 26px; }}
-      .tracker-nav {{ display: grid; grid-template-columns: 1fr; width: 100%; }}
-      .tracker-nav span, .tracker-nav a {{ justify-content: center; min-width: 0; min-height: 36px; text-align: center; white-space: normal; }}
       h1 {{ max-width: 100%; font-size: clamp(1.85rem, 10vw, 2.45rem); line-height: 1; word-break: break-word; }}
       .lead {{ max-width: 100%; font-size: .96rem; overflow-wrap: anywhere; word-break: break-word; }}
       .desktop-summary {{ display: none; }}
@@ -197,13 +189,6 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
 <body>
   <header class="hero">
     <div class="wrap hero-content">
-      <nav class="tracker-nav" aria-label="Deal Trackers">
-        <a class="home-link" href="{MAIN_DASHBOARD_URL}">Main Dashboard</a>
-        <span>Deal Trackers</span>
-        <a href="https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/">PS5 + TV</a>
-        <a href="https://lukestambaugh75-hue.github.io/kegerator-tracker-r0/">Kegerators</a>
-        <a href="https://lukestambaugh75-hue.github.io/ford-raptor-tracker-r0/">Raptor</a>
-      </nav>
       <span class="eyebrow">Electronics price tracker</span>
       <h1>PS5 and 65-inch TV Deal Tracker</h1>
       <p class="lead"><span class="desktop-summary">{esc(summary)}</span><span class="mobile-summary">{esc(mobile_summary)}</span></p>
