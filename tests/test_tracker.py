@@ -278,6 +278,94 @@ hidden-mutations:
         self.assertIn("audience boundary violation", completed.stderr)
         self.assertIn("redirect", completed.stderr.lower())
 
+    def test_audience_guard_rejects_inline_event_handler_navigation(self):
+        data, html_text, payload = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>",
+            """<button onclick="window.location='https://lukestambaugh75-hue.github.io/kegerator-tracker-r0/'">Open</button></body>""",
+        )
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("audience boundary violation", completed.stderr)
+        self.assertIn("event handler", completed.stderr.lower())
+
+    def test_audience_guard_treats_svg_href_as_a_local_resource_load(self):
+        data, html_text, payload = self._audience_fixture()
+        current_product_url = data["items"][0]["url"]
+
+        for tag in ("image", "use", "feImage"):
+            with self.subTest(tag=tag):
+                candidate = html_text.replace(
+                    "</body>",
+                    f'<svg><{tag} href="{current_product_url}"></{tag}></svg></body>',
+                )
+                completed = self._run_guard(candidate, data, payload)
+                self.assertEqual(completed.returncode, 1)
+                self.assertIn("external resource", completed.stderr.lower())
+
+    def test_audience_guard_allows_svg_image_to_load_an_existing_local_asset(self):
+        data, html_text, payload = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>",
+            '<svg><image href="assets/electronics-hero.png"></image></svg></body>',
+        )
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_audience_guard_rejects_uninspected_srcdoc(self):
+        data, html_text, payload = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>",
+            """<iframe srcdoc="&lt;a href='https://evil.example/dashboard'&gt;Other&lt;/a&gt;"></iframe></body>""",
+        )
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("audience boundary violation", completed.stderr)
+        self.assertIn("srcdoc", completed.stderr.lower())
+
+    def test_audience_guard_rejects_ping_targets(self):
+        data, html_text, payload = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>",
+            f'<a href="{self.DASHBOARD_URL}" ping="https://evil.example/audit">Open</a></body>',
+        )
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("audience boundary violation", completed.stderr)
+        self.assertIn("ping", completed.stderr.lower())
+
+    def test_audience_guard_allows_forbidden_words_inside_a_longer_product_name(self):
+        data, html_text, payload = self._audience_fixture()
+        html_text = html_text.replace(
+            "Current retailer product", "PlayStation 5 Raptor Edition product"
+        )
+        payload["body_text"] += "\nProduct: PlayStation 5 Raptor Edition"
+        payload["body_html"] += "\n<p>Product: PlayStation 5 Raptor Edition</p>"
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_audience_guard_rejects_forbidden_words_in_interactive_navigation(self):
+        data, html_text, payload = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>",
+            f'<a href="{self.DASHBOARD_URL}">Main Dashboard</a></body>',
+        )
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("forbidden cross-dashboard navigation text", completed.stderr)
+
     def test_audience_guard_rejects_external_email_url(self):
         data, html_text, payload = self._audience_fixture()
         payload["body_text"] += "\nOther dashboard: https://evil.example/dashboard"

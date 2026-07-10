@@ -37,6 +37,9 @@ FORBIDDEN_VISIBLE_NAV = (
     "Ford Raptor",
     "Raptor",
 )
+INTERACTIVE_TEXT_TAGS = {"a", "button", "menu", "nav", "option", "summary"}
+INTERACTIVE_ROLES = {"button", "link", "menu", "menuitem", "navigation", "tab"}
+SVG_RESOURCE_TAGS = {"feimage", "image", "use"}
 
 
 class AudienceBoundaryError(ValueError):
@@ -68,7 +71,9 @@ class _ActiveUrlParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.references = []
-        self.visible_text = []
+        self.navigation_label_chunks = []
+        self.completed_navigation_labels = []
+        self._interactive_stack = []
         self._style_depth = 0
         self._script_depth = 0
 
@@ -81,12 +86,25 @@ class _ActiveUrlParser(HTMLParser):
         if tag == "script":
             self._script_depth += 1
 
+        role = str(attrs_by_name.get("role") or "").strip().lower()
+        is_interactive = tag in INTERACTIVE_TEXT_TAGS or role in INTERACTIVE_ROLES
+
         for name, value in attrs:
             name = str(name).lower()
             value = html.unescape(str(value or "").strip())
+            if name.startswith("on"):
+                raise AudienceBoundaryError(
+                    f"inline event handler attributes are not allowed: <{tag}> {name}"
+                )
+            if name in {"srcdoc", "ping"}:
+                raise AudienceBoundaryError(
+                    f"active uninspected attribute is not allowed: <{tag}> {name}"
+                )
             if not value:
                 continue
             context = f"<{tag}> {name}"
+            if is_interactive and name in {"aria-label", "title", "value"}:
+                self.navigation_label_chunks.append(value)
             if name == "style":
                 self.references.extend(_css_references(value, context))
             elif name == "srcset":
@@ -97,7 +115,7 @@ class _ActiveUrlParser(HTMLParser):
             elif name in {"src", "poster", "background", "data", "xlink:href"}:
                 self.references.append(("resource", value, context))
             elif name == "href":
-                kind = "resource" if tag == "link" else "navigation"
+                kind = "resource" if tag == "link" or tag in SVG_RESOURCE_TAGS else "navigation"
                 self.references.append((kind, value, context))
             elif name in {"action", "formaction", "cite"}:
                 self.references.append(("navigation", value, context))
@@ -109,22 +127,35 @@ class _ActiveUrlParser(HTMLParser):
                 self.references.append(
                     ("navigation", match.group(1).strip(" \t\"'"), "<meta> refresh")
                 )
+        return is_interactive
 
     def handle_starttag(self, tag, attrs):
-        self._handle_tag(tag.lower(), attrs)
+        tag = tag.lower()
+        if self._handle_tag(tag, attrs):
+            self._interactive_stack.append({"tag": tag, "parts": []})
 
     def handle_startendtag(self, tag, attrs):
-        self._handle_tag(tag.lower(), attrs)
-        if tag.lower() == "style":
+        tag = tag.lower()
+        self._handle_tag(tag, attrs)
+        if tag == "style":
             self._style_depth -= 1
-        if tag.lower() == "script":
+        if tag == "script":
             self._script_depth -= 1
 
     def handle_endtag(self, tag):
-        if tag.lower() == "style" and self._style_depth:
+        tag = tag.lower()
+        if tag == "style" and self._style_depth:
             self._style_depth -= 1
-        if tag.lower() == "script" and self._script_depth:
+        if tag == "script" and self._script_depth:
             self._script_depth -= 1
+        for index in range(len(self._interactive_stack) - 1, -1, -1):
+            if self._interactive_stack[index]["tag"] == tag:
+                for element in self._interactive_stack[index:]:
+                    label = " ".join(element["parts"]).strip()
+                    if label:
+                        self.completed_navigation_labels.append(label)
+                del self._interactive_stack[index:]
+                break
 
     def handle_data(self, data):
         if self._style_depth:
@@ -136,8 +167,20 @@ class _ActiveUrlParser(HTMLParser):
             for value in ABSOLUTE_URL_RE.findall(data):
                 self.references.append(("navigation", value.rstrip(".,;"), "<script> URL"))
             return
-        if data.strip():
-            self.visible_text.append(data.strip())
+        text = data.strip()
+        if text and self._interactive_stack:
+            self.navigation_label_chunks.append(text)
+            for element in self._interactive_stack:
+                element["parts"].append(text)
+
+    def navigation_labels(self):
+        labels = self.navigation_label_chunks + self.completed_navigation_labels
+        labels.extend(
+            " ".join(element["parts"]).strip()
+            for element in self._interactive_stack
+            if element["parts"]
+        )
+        return labels
 
 
 def _validate_local_resource(value, context, asset_root):
@@ -171,11 +214,16 @@ def _validate_navigation(value, context, allowed_urls):
 
 
 def _validate_visible_navigation(parser):
-    visible = " ".join(parser.visible_text)
-    lowered = visible.casefold()
-    for label in FORBIDDEN_VISIBLE_NAV:
-        if label.casefold() in lowered:
-            raise AudienceBoundaryError(f"forbidden cross-dashboard navigation text: {label}")
+    forbidden = {
+        re.sub(r"\s+", " ", label).strip(" \t\r\n:|›→-").casefold(): label
+        for label in FORBIDDEN_VISIBLE_NAV
+    }
+    for candidate in parser.navigation_labels():
+        normalized = re.sub(r"\s+", " ", candidate).strip(" \t\r\n:|›→-").casefold()
+        if normalized in forbidden:
+            raise AudienceBoundaryError(
+                f"forbidden cross-dashboard navigation text: {forbidden[normalized]}"
+            )
 
 
 def _parse_html(html_text):
