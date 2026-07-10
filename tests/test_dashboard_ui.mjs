@@ -27,6 +27,11 @@ test("setViewQuery preserves unrelated query parameters", () => {
   assert.equal(setViewQuery("?view=details&utm=email", "compact"), "?utm=email");
 });
 
+test("live same-page view target preserves unrelated query parameters and hash", () => {
+  const target = setViewQuery("?utm=email&source=digest", "details") + "#comparison";
+  assert.equal(target, "?utm=email&source=digest&view=details#comparison");
+});
+
 test("composed filters and ascending price sort work without mutating source rows", () => {
   const snapshot = JSON.stringify(rows);
   const actual = applyRowControls(rows, {

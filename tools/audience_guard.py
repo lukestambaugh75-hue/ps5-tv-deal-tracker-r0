@@ -29,7 +29,52 @@ SCRIPT_NAVIGATION_RE = re.compile(
     r"\bwindow\.open\s*\()",
     re.IGNORECASE,
 )
-UNSAFE_HISTORY_METHODS = {"back", "forward", "go", "pushState"}
+UNSAFE_GLOBAL_IDENTIFIERS = {
+    "EventSource",
+    "WebSocket",
+    "XMLHttpRequest",
+    "fetch",
+    "open",
+    "sendBeacon",
+}
+COMPUTED_MEMBER_ROOTS = {"globalThis", "history", "navigator", "self", "window"}
+REGEX_PREFIX_KEYWORDS = {
+    "await",
+    "case",
+    "delete",
+    "do",
+    "else",
+    "in",
+    "instanceof",
+    "new",
+    "of",
+    "return",
+    "throw",
+    "typeof",
+    "void",
+    "yield",
+}
+REGEX_PREFIX_PUNCTUATION = {
+    "!",
+    "%",
+    "&",
+    "(",
+    "*",
+    "+",
+    ",",
+    "-",
+    ":",
+    ";",
+    "<",
+    "=",
+    ">",
+    "?",
+    "[",
+    "^",
+    "{",
+    "|",
+    "~",
+}
 FORBIDDEN_VISIBLE_NAV = (
     "Main Dashboard",
     "Deal Trackers",
@@ -209,6 +254,16 @@ def _javascript_tokens(source):
     tokens = []
     length = len(source)
 
+    def regex_can_start():
+        if not tokens:
+            return True
+        kind, value, _ = tokens[-1]
+        if kind == "identifier":
+            return value in REGEX_PREFIX_KEYWORDS
+        if kind == "punctuation":
+            return value in REGEX_PREFIX_PUNCTUATION
+        return False
+
     def scan(index, stop_on_closing_brace=False):
         brace_depth = 0
         while index < length:
@@ -270,6 +325,30 @@ def _javascript_tokens(source):
                 else:
                     raise AudienceBoundaryError("unterminated JavaScript template")
                 continue
+            if char == "/" and regex_can_start():
+                index += 1
+                in_character_class = False
+                while index < length:
+                    current = source[index]
+                    if current == "\\":
+                        index += 2
+                        continue
+                    if current in {"\n", "\r"}:
+                        raise AudienceBoundaryError("unterminated JavaScript regex literal")
+                    if current == "[":
+                        in_character_class = True
+                    elif current == "]":
+                        in_character_class = False
+                    elif current == "/" and not in_character_class:
+                        index += 1
+                        while index < length and source[index].isalpha():
+                            index += 1
+                        tokens.append(("regex", "", False))
+                        break
+                    index += 1
+                else:
+                    raise AudienceBoundaryError("unterminated JavaScript regex literal")
+                continue
             if char.isalpha() or char in {"_", "$"}:
                 end = index + 1
                 while end < length and (
@@ -277,6 +356,15 @@ def _javascript_tokens(source):
                 ):
                     end += 1
                 tokens.append(("identifier", source[index:end], False))
+                index = end
+                continue
+            if char.isdigit():
+                end = index + 1
+                while end < length and (
+                    source[end].isalnum() or source[end] in {".", "_"}
+                ):
+                    end += 1
+                tokens.append(("number", source[index:end], False))
                 index = end
                 continue
             if char == "{":
@@ -329,16 +417,15 @@ def _safe_replace_state_argument(argument):
         return not escaped and (not value or value.startswith(("?", "#")))
     values = [token[1] for token in argument]
     expected = [
+        "setViewQuery",
         "(",
+        "window",
+        ".",
+        "location",
+        ".",
+        "search",
+        ",",
         "selected",
-        "=",
-        "=",
-        "=",
-        "details",
-        "?",
-        "?view=details",
-        ":",
-        "",
         ")",
         "+",
         "window",
@@ -347,11 +434,7 @@ def _safe_replace_state_argument(argument):
         ".",
         "hash",
     ]
-    string_positions = {5, 7, 9}
-    return values == expected and all(
-        argument[index][0] == "string" and not argument[index][2]
-        for index in string_positions
-    )
+    return values == expected
 
 
 def _validate_script_tokens(tokens, script_name):
@@ -363,8 +446,18 @@ def _validate_script_tokens(tokens, script_name):
             raise AudienceBoundaryError(
                 f"imports are not allowed in self-contained local script: {script_name}"
             )
-        if kind == "identifier" and value == "fetch" and next_value == "(":
-            raise AudienceBoundaryError(f"fetch is not allowed in local script: {script_name}")
+        if kind == "identifier" and value in UNSAFE_GLOBAL_IDENTIFIERS:
+            raise AudienceBoundaryError(
+                f"network or global navigation identifier is not allowed: {value} in {script_name}"
+            )
+        if (
+            kind == "identifier"
+            and value in COMPUTED_MEMBER_ROOTS
+            and next_value == "["
+        ):
+            raise AudienceBoundaryError(
+                f"computed global member access is not allowed: {value} in {script_name}"
+            )
         if kind == "identifier" and value == "export":
             following = values[index + 1 :]
             if following and following[0] == "*":
@@ -387,41 +480,39 @@ def _validate_script_tokens(tokens, script_name):
                     raise AudienceBoundaryError(
                         f"re-exports are not allowed in local script: {script_name}"
                     )
-        if kind == "identifier" and value == "window":
-            if values[index : index + 4] == ["window", ".", "open", "("]:
-                raise AudienceBoundaryError(
-                    f"script redirect or navigation code is not allowed: {script_name}"
-                )
         if kind == "identifier" and value == "location":
-            if next_value == "=":
+            is_window_chain = values[max(0, index - 2) : index] == ["window", "."]
+            property_name = values[index + 2] if values[index + 1 : index + 2] == ["."] and index + 2 < len(values) else None
+            if not is_window_chain or property_name not in {"hash", "search"}:
                 raise AudienceBoundaryError(
-                    f"script redirect or navigation code is not allowed: {script_name}"
+                    f"only read-only window.location.search/hash is allowed: {script_name}"
                 )
-            if values[index + 1 : index + 4] in (
-                [".", "assign", "("],
-                [".", "replace", "("],
-                [".", "reload", "("],
-            ):
+            lookahead = values[index + 3 : index + 6]
+            if "=" in lookahead:
                 raise AudienceBoundaryError(
-                    f"script redirect or navigation code is not allowed: {script_name}"
-                )
-            if values[index + 1 : index + 4] == [".", "href", "="]:
-                raise AudienceBoundaryError(
-                    f"script redirect or navigation code is not allowed: {script_name}"
+                    f"window.location.{property_name} must remain read-only: {script_name}"
                 )
         if kind == "identifier" and value == "history":
-            if (
-                values[index + 1 : index + 2] == ["."]
-                and values[index + 2 : index + 3]
-                and values[index + 2] in UNSAFE_HISTORY_METHODS
-            ):
+            is_window_chain = values[max(0, index - 2) : index] == ["window", "."]
+            is_direct_replace = values[index + 1 : index + 4] == [
+                ".",
+                "replaceState",
+                "(",
+            ]
+            if not is_window_chain or not is_direct_replace:
                 raise AudienceBoundaryError(
-                    f"history navigation is not allowed in local script: {script_name}"
+                    f"only direct window.history.replaceState is allowed: {script_name}"
                 )
         if kind == "identifier" and value == "replaceState":
-            if next_value != "(":
+            is_window_history_chain = values[max(0, index - 4) : index] == [
+                "window",
+                ".",
+                "history",
+                ".",
+            ]
+            if not is_window_history_chain or next_value != "(":
                 raise AudienceBoundaryError(
-                    f"indirect history replacement is not allowed: {script_name}"
+                    f"only direct window.history.replaceState is allowed: {script_name}"
                 )
             arguments, _ = _call_arguments(tokens, index + 1)
             if len(arguments) != 3 or not _safe_replace_state_argument(arguments[2]):

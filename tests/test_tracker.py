@@ -723,7 +723,7 @@ hidden-mutations:
 const message = 'import(\"./not-code.mjs\")';
 // import { notCode } from "./not-code.mjs";
 /* import ("./still-not-code.mjs"); */
-history.replaceState(null, "", "?view=details");
+window.history.replaceState(null, "", "?view=details");
 """
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -744,8 +744,59 @@ history.replaceState(null, "", "?view=details");
             (root / "assets").mkdir()
             (root / "assets" / "electronics-hero.png").write_bytes(b"fixture")
             (root / "assets" / "test-ui.mjs").write_text(
-                'history.replaceState(null, "", "?view=details");', encoding="utf-8"
+                'window.history.replaceState(null, "", "?view=details");', encoding="utf-8"
             )
+            validate_dashboard_html(html_text, data, asset_root=root)
+
+    def test_audience_guard_rejects_aliases_computed_members_and_network_globals(self):
+        from tools.audience_guard import AudienceBoundaryError, validate_dashboard_html
+
+        data, html_text, _ = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>", '<script type="module" src="assets/test-ui.mjs"></script></body>'
+        )
+        cases = {
+            "fetch alias": 'const request = fetch; request("/data.json");',
+            "open alias": 'const launch = open; launch("/kegerator");',
+            "computed window": 'window["fetch"]("/data.json");',
+            "computed history": 'history["replaceState"](null, "", "/kegerator");',
+            "computed globalThis": 'globalThis["fetch"]("/data.json");',
+            "computed self": 'self["open"]("/kegerator");',
+            "XMLHttpRequest": 'const request = new XMLHttpRequest();',
+            "WebSocket": 'const socket = new WebSocket("/socket");',
+            "EventSource": 'const events = new EventSource("/events");',
+            "sendBeacon": 'const beacon = navigator.sendBeacon;',
+            "bare history": 'history.replaceState(null, "", "?view=details");',
+            "history alias": 'const replace = window.history.replaceState;',
+            "bare location": 'const query = location.search;',
+            "location alias": 'const current = window.location;',
+        }
+        for label, source in cases.items():
+            with self.subTest(case=label), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / "assets").mkdir()
+                (root / "assets" / "electronics-hero.png").write_bytes(b"fixture")
+                (root / "assets" / "test-ui.mjs").write_text(source, encoding="utf-8")
+                with self.assertRaises(AudienceBoundaryError):
+                    validate_dashboard_html(html_text, data, asset_root=root)
+
+    def test_audience_guard_treats_regex_literal_text_as_non_executable(self):
+        from tools.audience_guard import validate_dashboard_html
+
+        data, html_text, _ = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>", '<script type="module" src="assets/test-ui.mjs"></script></body>'
+        )
+        source = r'''
+const importPattern = /import\s*\(/;
+const fetchPattern = /fetch\s*\(/;
+window.history.replaceState(null, "", "?view=details");
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "assets").mkdir()
+            (root / "assets" / "electronics-hero.png").write_bytes(b"fixture")
+            (root / "assets" / "test-ui.mjs").write_text(source, encoding="utf-8")
             validate_dashboard_html(html_text, data, asset_root=root)
 
     def test_audience_guard_rejects_cross_path_history_replace_state(self):
@@ -756,10 +807,10 @@ history.replaceState(null, "", "?view=details");
             "</body>", '<script type="module" src="assets/test-ui.mjs"></script></body>'
         )
         cases = (
-            'history.replaceState(null, "", "/kegerator");',
-            'history.replaceState(null, "", "/kegerator" + "?view=details");',
-            'history.replaceState(null, "", window.location.pathname + "?view=details");',
-            'const setViewQuery = () => "/kegerator"; history.replaceState(null, "", setViewQuery() + window.location.hash);',
+            'window.history.replaceState(null, "", "/kegerator");',
+            'window.history.replaceState(null, "", "/kegerator" + "?view=details");',
+            'window.history.replaceState(null, "", window.location.pathname + "?view=details");',
+            'const setViewQuery = () => "/kegerator"; window.history.replaceState(null, "", setViewQuery() + window.location.hash);',
         )
         for source in cases:
             with self.subTest(source=source), tempfile.TemporaryDirectory() as tmp:
@@ -1054,6 +1105,10 @@ history.replaceState(null, "", "?view=details");
         with open("assets/dashboard-ui.mjs", encoding="utf-8") as f:
             ui_source = f.read()
         self.assertNotIn("location.pathname", ui_source)
+        self.assertIn(
+            "setViewQuery(window.location.search, selected) + window.location.hash",
+            ui_source,
+        )
 
     def test_history_rows_are_lf_only_and_one_row_per_target(self):
         from tools.append_history import build_history_rows, write_history

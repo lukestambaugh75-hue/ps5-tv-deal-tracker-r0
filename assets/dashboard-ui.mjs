@@ -231,7 +231,7 @@ function initializeView(documentRoot) {
       window.history.replaceState(
         null,
         "",
-        (selected === "details" ? "?view=details" : "") + window.location.hash,
+        setViewQuery(window.location.search, selected) + window.location.hash,
       );
     }
   };
