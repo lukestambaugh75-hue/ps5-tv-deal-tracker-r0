@@ -4,6 +4,19 @@ import copy
 import re
 from datetime import datetime, timezone
 
+try:
+    from .refresh_state import (
+        DEFAULT_CADENCE_MINUTES,
+        DEFAULT_GRACE_MINUTES,
+        utc_iso,
+    )
+except ImportError:
+    from refresh_state import (
+        DEFAULT_CADENCE_MINUTES,
+        DEFAULT_GRACE_MINUTES,
+        utc_iso,
+    )
+
 
 MAX_EVIDENCE_AGE_HOURS = 12
 TARGET_IDS = {"ps5", "tv"}
@@ -161,18 +174,82 @@ def warnings_for(source):
     return warnings
 
 
+def _refresh_metadata(data):
+    existing = dict(data.get("refresh") or {})
+    legacy_success = data.get("meta", {}).get("generated_at_utc")
+    existing.setdefault("data_refreshed_at_utc", legacy_success)
+    existing.setdefault("last_attempt_at_utc", legacy_success)
+    existing.setdefault("last_attempt_status", "success" if legacy_success else "unknown")
+    existing.setdefault("last_attempt_reason", None)
+    existing.setdefault("cadence_minutes", DEFAULT_CADENCE_MINUTES)
+    existing.setdefault("grace_minutes", DEFAULT_GRACE_MINUTES)
+    existing.setdefault("timezone", "America/Chicago")
+    existing.setdefault("archived", False)
+    existing.setdefault("source_count", len(data.get("items") or []))
+    existing.setdefault("row_count", len(data.get("items") or []))
+    existing.setdefault("quality_counts", {})
+    existing.setdefault("rendered_at_utc", None)
+    existing.setdefault("published_at_utc", None)
+    return existing
+
+
+def _quality_counts(sources):
+    counts = {}
+    for source in sources:
+        label = str(source.get("evidence_class") or "unknown")
+        counts[label] = counts.get(label, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def record_unsuccessful_attempt(data, status, reason, attempted_at=None):
+    """Record an attempt without altering the last complete evidence snapshot."""
+    if status not in {"blocked", "partial", "failed"}:
+        raise ValueError(f"invalid unsuccessful attempt status: {status}")
+    attempted_at = attempted_at or datetime.now(timezone.utc)
+    updated = copy.deepcopy(data)
+    refresh = _refresh_metadata(updated)
+    refresh["last_attempt_at_utc"] = utc_iso(attempted_at)
+    refresh["last_attempt_status"] = status
+    refresh["last_attempt_reason"] = str(reason or "Refresh attempt did not complete.").strip()
+    updated["refresh"] = refresh
+    return updated
+
+
 def apply_evidence(data, evidence, now=None):
     captured_at, sources = validate_evidence(evidence, now=now)
+    attempted_at = now or datetime.now(timezone.utc)
     updated = copy.deepcopy(data)
-    updated["items"] = sorted(sources, key=lambda item: (item["target_id"], rank_score(item), item["retailer"]))
-    updated.setdefault("meta", {})["generated_at_utc"] = captured_at.isoformat().replace("+00:00", "Z")
-    updated["meta"]["purchase_area"] = evidence.get("purchase_area") or "Big-box retailers and Houston-area pickup/delivery"
+    updated["items"] = sorted(
+        sources,
+        key=lambda item: (item["target_id"], rank_score(item), item["retailer"]),
+    )
+    updated.setdefault("meta", {}).pop("generated_at_utc", None)
+    updated["meta"]["purchase_area"] = evidence.get("purchase_area") or (
+        "Big-box retailers and Houston-area pickup/delivery"
+    )
     updated["meta"]["blocker"] = None
+
+    refresh = _refresh_metadata(updated)
+    refresh.update(
+        {
+            "data_refreshed_at_utc": utc_iso(captured_at),
+            "last_attempt_at_utc": utc_iso(attempted_at),
+            "last_attempt_status": "success",
+            "last_attempt_reason": None,
+            "cadence_minutes": DEFAULT_CADENCE_MINUTES,
+            "grace_minutes": DEFAULT_GRACE_MINUTES,
+            "timezone": "America/Chicago",
+            "archived": False,
+            "source_count": len(evidence.get("sources") or []),
+            "row_count": len(sources),
+            "quality_counts": _quality_counts(sources),
+        }
+    )
+    updated["refresh"] = refresh
 
     best = best_rows_by_target(updated)
     warnings = sorted({warning for item in updated["items"] for warning in item.get("warnings", [])})
     updated["daily_brief"] = {
-        "fresh_evidence_status": "fresh",
         "summary": build_summary(best),
         "warnings": warnings,
         "data_quality_gaps": [
@@ -181,6 +258,29 @@ def apply_evidence(data, evidence, now=None):
         ],
     }
     return updated
+
+
+def process_evidence_attempt(data, evidence, now=None):
+    """Apply a complete packet or preserve truth and record the failed attempt."""
+    attempted_at = now or datetime.now(timezone.utc)
+    evidence = evidence if isinstance(evidence, dict) else {}
+    explicit_status = str(evidence.get("status") or "").strip().lower()
+    if explicit_status in {"blocked", "partial", "failed"}:
+        reason = evidence.get("reason") or evidence.get("blocker") or (
+            "Refresh attempt did not complete."
+        )
+        return record_unsuccessful_attempt(data, explicit_status, reason, attempted_at), False
+
+    try:
+        return apply_evidence(data, evidence, now=attempted_at), True
+    except Exception as exc:
+        source_targets = {
+            str(source.get("target_id") or "").strip().lower()
+            for source in evidence.get("sources") or []
+            if isinstance(source, dict)
+        }
+        status = "partial" if source_targets and source_targets != TARGET_IDS else "failed"
+        return record_unsuccessful_attempt(data, status, str(exc), attempted_at), False
 
 
 def rank_score(item):

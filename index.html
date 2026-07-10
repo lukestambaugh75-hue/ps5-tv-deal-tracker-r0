@@ -37,6 +37,17 @@
     .metric, .best-card, .panel { background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow: hidden; }
     .metric strong { display: block; font-size: 1.75rem; margin-top: 4px; }
     .metric small { overflow-wrap: anywhere; }
+    .refresh-block { margin-top: 14px; background: rgba(23,29,38,.94); }
+    .refresh-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+    .state-badge { display: inline-flex; align-items: center; min-height: 32px; border-radius: 999px; padding: 5px 12px; font-size: .9rem; border: 1px solid var(--line); }
+    .state-badge.fresh { color: #17351e; background: var(--green); border-color: var(--green); }
+    .state-badge.due { color: #2f1e00; background: var(--amber); border-color: var(--amber); }
+    .state-badge.stale, .state-badge.blocked { color: #3b0b0b; background: var(--red); border-color: var(--red); }
+    .state-badge.unknown, .state-badge.archived { color: var(--ink); background: var(--line); }
+    .refresh-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .refresh-facts div { min-width: 0; padding: 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 6px; background: rgba(255,255,255,.035); }
+    .refresh-reason { margin-top: 12px; color: var(--muted); }
+    .secondary-time { color: var(--muted); font-size: .8rem; margin-top: 10px; }
     .color-index { margin-top: 14px; background: rgba(101,167,255,.08); }
     .color-index p { margin-bottom: 0; }
     .best-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 26px 0 0; }
@@ -64,7 +75,7 @@
       .lead { max-width: 100%; font-size: .96rem; overflow-wrap: anywhere; word-break: break-word; }
       .desktop-summary { display: none; }
       .mobile-summary { display: inline; }
-      .metrics, .best-grid, dl { grid-template-columns: 1fr; }
+      .metrics, .best-grid, dl, .refresh-facts { grid-template-columns: 1fr; }
       table, thead, tbody, tr, th, td { display: block; }
       thead { display: none; }
       td { border-bottom: 0; padding: 9px 0; }
@@ -79,10 +90,38 @@
       <h1>PS5 and 65-inch TV Deal Tracker</h1>
       <p class="lead"><span class="desktop-summary">PS5: Target $449.99 for PlayStation 5 Disc Astrobot Bundle. TV: Walmart $398 for Hisense 65 inch M7 Series Mini-LED QLED 4K UHD Google Smart TV.</span><span class="mobile-summary">PS5: Target $449.99. TV: Walmart $398.</span></p>
       <div class="metrics">
-        <div class="metric"><span class="eyebrow">Freshness</span><strong>fresh</strong><small>Generated 2026-07-08T06:02:29Z</small></div>
+        <div class="metric"><span class="eyebrow">Data state</span><strong>Stale</strong><small>Derived from the last successful source evidence</small></div>
         <div class="metric"><span class="eyebrow">Tracked Rows</span><strong>16</strong><small>Current retailer evidence rows</small></div>
         <div class="metric"><span class="eyebrow">Warnings</span><strong>5</strong><small>entry-tier TV, manufacturer-direct reference, marketplace seller, member-only price, out of stock</small></div>
       </div>
+      <section
+        class="panel refresh-block"
+        aria-labelledby="refresh-heading"
+        data-refresh-root
+        data-success-at="2026-07-08T06:02:29Z"
+        data-cadence-minutes="2880"
+        data-grace-minutes="180"
+        data-attempt-status="success"
+        data-archived="false"
+      >
+        <div class="refresh-heading">
+          <div>
+            <span class="eyebrow">Actual source data</span>
+            <h2 id="refresh-heading">Refresh evidence</h2>
+          </div>
+          <strong id="refresh-status" class="state-badge stale" aria-live="polite">Stale</strong>
+        </div>
+        <dl class="refresh-facts">
+          <div><dt>Last successful data refresh</dt><dd>Jul 8, 2026 1:02 AM CDT</dd></div>
+          <div><dt>Age</dt><dd id="refresh-age">2 days 7 hours</dd></div>
+          <div><dt>Cadence</dt><dd>Every 48 hours + 3-hour grace</dd></div>
+          <div><dt>Next due</dt><dd>Jul 10, 2026 1:02 AM CDT</dd></div>
+          <div><dt>Latest attempt</dt><dd>Jul 8, 2026 1:02 AM CDT (success)</dd></div>
+          <div><dt>Evidence represented</dt><dd>16 rows from 16 sources</dd></div>
+        </dl>
+        <p class="refresh-reason"><strong>State reason:</strong> <span id="refresh-reason">Data is older than the cadence and grace window.</span></p>
+        <p class="secondary-time"><strong>Render / publish:</strong> rendered Jul 10, 2026 8:04 AM CDT; published Not recorded. These do not change the underlying data age.</p>
+      </section>
       <div class="panel color-index">
         <span class="eyebrow">Color index</span>
         <p class="note"><strong>Green</strong> = recommended or ready to act. <strong>Blue</strong> = information only, like links, charts, totals, or neutral controls; it is not a recommendation. <strong>Amber</strong> = caution; check details before acting. <strong>Red</strong> = blocked or stop; do not act until fixed.</p>
@@ -283,5 +322,79 @@
     </section>
   </main>
   <footer class="wrap footer">Confirm final cart total, tax, pickup or delivery timing, and seller identity before buying.</footer>
+  <script type="application/json" id="refresh-metadata">{
+  "age_label": "2 days 7 hours",
+  "age_minutes": 3301,
+  "archived": false,
+  "cadence_minutes": 2880,
+  "data_refreshed_at_central": "Jul 8, 2026 1:02 AM CDT",
+  "data_refreshed_at_utc": "2026-07-08T06:02:29Z",
+  "evaluated_at_utc": "2026-07-10T13:04:04.850483Z",
+  "grace_minutes": 180,
+  "last_attempt_at_central": "Jul 8, 2026 1:02 AM CDT",
+  "last_attempt_at_utc": "2026-07-08T06:02:29Z",
+  "last_attempt_reason": null,
+  "last_attempt_status": "success",
+  "next_due_at_central": "Jul 10, 2026 1:02 AM CDT",
+  "next_due_at_utc": "2026-07-10T06:02:29Z",
+  "published_at_central": "Not recorded",
+  "published_at_utc": null,
+  "quality_counts": {
+    "big_box_public_price": 8,
+    "houston_visible_buy_path": 3,
+    "manufacturer_direct_reference": 1,
+    "marketplace_seller": 2,
+    "member_only": 1,
+    "out_of_stock": 1
+  },
+  "reason": "Data is older than the cadence and grace window.",
+  "rendered_at_central": "Jul 10, 2026 8:04 AM CDT",
+  "rendered_at_utc": "2026-07-10T13:04:04.850483Z",
+  "row_count": 16,
+  "source_count": 16,
+  "stale_after_at_central": "Jul 10, 2026 4:02 AM CDT",
+  "stale_after_at_utc": "2026-07-10T09:02:29Z",
+  "state": "Stale",
+  "timezone": "America/Chicago"
+}</script>
+  <script data-refresh-hydration>
+    (() => {
+      const root = document.querySelector("[data-refresh-root]");
+      if (!root) return;
+      const stateNode = document.getElementById("refresh-status");
+      const ageNode = document.getElementById("refresh-age");
+      const reasonNode = document.getElementById("refresh-reason");
+      const successAt = Date.parse(root.dataset.successAt || "");
+      const cadence = Number(root.dataset.cadenceMinutes || 0);
+      const grace = Number(root.dataset.graceMinutes || 0);
+      const attemptStatus = root.dataset.attemptStatus || "unknown";
+      const archived = root.dataset.archived === "true";
+      const labels = {
+        Fresh: "Data is within the 48-hour refresh cadence.",
+        Due: "Data is due but remains inside the 3-hour grace window.",
+        Stale: "Data is older than the cadence and grace window."
+      };
+      const ageLabel = (minutes) => {
+        const days = Math.floor(minutes / 1440);
+        const hours = Math.floor((minutes % 1440) / 60);
+        const mins = minutes % 60;
+        if (days) return `${days} day${days === 1 ? "" : "s"} ${hours} hour${hours === 1 ? "" : "s"}`;
+        if (hours) return `${hours} hour${hours === 1 ? "" : "s"}`;
+        return `${mins} minute${mins === 1 ? "" : "s"}`;
+      };
+      const update = () => {
+        if (!Number.isFinite(successAt) || archived || !["success", "unknown"].includes(attemptStatus)) return;
+        const elapsed = Math.max(0, Date.now() - successAt);
+        const age = Math.floor(elapsed / 60000);
+        const state = elapsed <= cadence * 60000 ? "Fresh" : elapsed <= (cadence + grace) * 60000 ? "Due" : "Stale";
+        stateNode.textContent = state;
+        stateNode.className = `state-badge ${state.toLowerCase()}`;
+        ageNode.textContent = ageLabel(age);
+        reasonNode.textContent = labels[state];
+      };
+      update();
+      window.setInterval(update, 60000);
+    })();
+  </script>
 </body>
 </html>

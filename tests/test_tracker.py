@@ -193,7 +193,252 @@ hidden-mutations:
         self.assertIsNone(updated["meta"]["blocker"])
         self.assertEqual(best["ps5"]["retailer"], "Walmart")
         self.assertEqual(best["tv"]["model"], "65QM6K")
-        self.assertEqual(updated["daily_brief"]["fresh_evidence_status"], "fresh")
+        self.assertNotIn("fresh_evidence_status", updated["daily_brief"])
+        self.assertEqual(updated["refresh"]["data_refreshed_at_utc"], "2026-07-01T12:00:00Z")
+        self.assertEqual(updated["refresh"]["last_attempt_status"], "success")
+
+    def test_refresh_state_uses_inclusive_fresh_due_and_stale_boundaries(self):
+        from tools.refresh_state import evaluate_refresh
+
+        refreshed = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        refresh = {
+            "data_refreshed_at_utc": refreshed.isoformat().replace("+00:00", "Z"),
+            "last_attempt_at_utc": refreshed.isoformat().replace("+00:00", "Z"),
+            "last_attempt_status": "success",
+            "last_attempt_reason": None,
+            "cadence_minutes": 2880,
+            "grace_minutes": 180,
+            "timezone": "America/Chicago",
+            "archived": False,
+        }
+
+        self.assertEqual(
+            evaluate_refresh(refresh, now=refreshed + timedelta(minutes=2880))["state"],
+            "Fresh",
+        )
+        self.assertEqual(
+            evaluate_refresh(
+                refresh, now=refreshed + timedelta(minutes=2880, seconds=1)
+            )["state"],
+            "Due",
+        )
+        self.assertEqual(
+            evaluate_refresh(refresh, now=refreshed + timedelta(minutes=3060))["state"],
+            "Due",
+        )
+        self.assertEqual(
+            evaluate_refresh(
+                refresh, now=refreshed + timedelta(minutes=3060, seconds=1)
+            )["state"],
+            "Stale",
+        )
+
+    def test_central_time_formatting_uses_cst_and_cdt(self):
+        from tools.refresh_state import format_central
+
+        self.assertEqual(
+            format_central("2026-01-15T12:00:00Z"),
+            "Jan 15, 2026 6:00 AM CST",
+        )
+        self.assertEqual(
+            format_central("2026-07-15T12:00:00Z"),
+            "Jul 15, 2026 7:00 AM CDT",
+        )
+
+    def test_first_failed_attempt_is_blocked_instead_of_unknown(self):
+        from tools.refresh_state import evaluate_refresh
+
+        now = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+        refresh = {
+            "data_refreshed_at_utc": None,
+            "last_attempt_at_utc": "2026-07-01T12:00:00Z",
+            "last_attempt_status": "blocked",
+            "last_attempt_reason": "No source was reachable.",
+            "cadence_minutes": 2880,
+            "grace_minutes": 180,
+            "timezone": "America/Chicago",
+            "archived": False,
+        }
+
+        state = evaluate_refresh(refresh, now=now)
+
+        self.assertEqual(state["state"], "Blocked")
+        self.assertIn("No source was reachable", state["reason"])
+
+    def test_blocked_attempt_preserves_complete_truth_and_updates_attempt_only(self):
+        from tools.tracker_core import apply_evidence, process_evidence_attempt
+
+        now, evidence = self._fresh_evidence()
+        complete = apply_evidence(self._seed_data(), evidence, now=now)
+        prior_items = json.loads(json.dumps(complete["items"]))
+        prior_summary = complete["daily_brief"]["summary"]
+        prior_success = complete["refresh"]["data_refreshed_at_utc"]
+        attempted = now + timedelta(hours=1)
+
+        blocked, succeeded = process_evidence_attempt(
+            complete,
+            {"status": "blocked", "reason": "Retailer challenge blocked evidence."},
+            now=attempted,
+        )
+
+        self.assertFalse(succeeded)
+        self.assertEqual(blocked["items"], prior_items)
+        self.assertEqual(blocked["daily_brief"]["summary"], prior_summary)
+        self.assertEqual(blocked["refresh"]["data_refreshed_at_utc"], prior_success)
+        self.assertEqual(blocked["refresh"]["last_attempt_at_utc"], "2026-07-01T13:00:00Z")
+        self.assertEqual(blocked["refresh"]["last_attempt_status"], "blocked")
+        self.assertEqual(
+            blocked["refresh"]["last_attempt_reason"],
+            "Retailer challenge blocked evidence.",
+        )
+
+    def test_partial_packet_preserves_complete_truth_and_records_partial_attempt(self):
+        from tools.tracker_core import apply_evidence, process_evidence_attempt
+
+        now, evidence = self._fresh_evidence()
+        complete = apply_evidence(self._seed_data(), evidence, now=now)
+        partial = json.loads(json.dumps(evidence))
+        partial["sources"] = [partial["sources"][0]]
+        attempted = now + timedelta(hours=1)
+
+        blocked, succeeded = process_evidence_attempt(complete, partial, now=attempted)
+
+        self.assertFalse(succeeded)
+        self.assertEqual(blocked["items"], complete["items"])
+        self.assertEqual(blocked["daily_brief"], complete["daily_brief"])
+        self.assertEqual(
+            blocked["refresh"]["data_refreshed_at_utc"],
+            complete["refresh"]["data_refreshed_at_utc"],
+        )
+        self.assertEqual(blocked["refresh"]["last_attempt_status"], "partial")
+        self.assertIn("missing target", blocked["refresh"]["last_attempt_reason"])
+
+    def test_failed_packet_changes_only_attempt_fields(self):
+        from tools.tracker_core import apply_evidence, process_evidence_attempt
+
+        now, evidence = self._fresh_evidence()
+        complete = apply_evidence(self._seed_data(), evidence, now=now)
+        invalid = json.loads(json.dumps(evidence))
+        invalid["sources"][0]["price"] = None
+        attempted = now + timedelta(hours=1)
+
+        failed, succeeded = process_evidence_attempt(complete, invalid, now=attempted)
+
+        self.assertFalse(succeeded)
+        self.assertEqual(failed["items"], complete["items"])
+        self.assertEqual(failed["daily_brief"], complete["daily_brief"])
+        self.assertEqual(failed["meta"], complete["meta"])
+        self.assertEqual(
+            failed["refresh"]["data_refreshed_at_utc"],
+            complete["refresh"]["data_refreshed_at_utc"],
+        )
+        self.assertEqual(
+            failed["refresh"]["source_count"], complete["refresh"]["source_count"]
+        )
+        self.assertEqual(failed["refresh"]["row_count"], complete["refresh"]["row_count"])
+        self.assertEqual(
+            failed["refresh"]["quality_counts"], complete["refresh"]["quality_counts"]
+        )
+        self.assertEqual(failed["refresh"]["last_attempt_status"], "failed")
+        self.assertEqual(failed["refresh"]["last_attempt_at_utc"], "2026-07-01T13:00:00Z")
+
+    def test_history_skips_blocked_stale_and_unrepresented_snapshots(self):
+        from tools.append_history import build_history_rows
+        from tools.tracker_core import apply_evidence, process_evidence_attempt
+
+        now, evidence = self._fresh_evidence()
+        complete = apply_evidence(self._seed_data(), evidence, now=now)
+        blocked, _ = process_evidence_attempt(
+            complete,
+            {"status": "blocked", "reason": "Source unavailable."},
+            now=now + timedelta(hours=1),
+        )
+        stale_now = now + timedelta(minutes=3060, seconds=1)
+        unrepresented = json.loads(json.dumps(complete))
+        unrepresented["items"] = [
+            row for row in unrepresented["items"] if row["target_id"] == "ps5"
+        ]
+
+        self.assertEqual(build_history_rows(blocked, now=now + timedelta(hours=1)), [])
+        self.assertEqual(build_history_rows(complete, now=stale_now), [])
+        self.assertEqual(build_history_rows(unrepresented, now=now), [])
+
+    def test_non_actionable_email_reports_evidence_without_prices_or_best_claims(self):
+        from tools.build_email import build_payload
+        from tools.tracker_core import apply_evidence, process_evidence_attempt
+
+        now, evidence = self._fresh_evidence()
+        complete = apply_evidence(self._seed_data(), evidence, now=now)
+        blocked, _ = process_evidence_attempt(
+            complete,
+            {"status": "blocked", "reason": "Retailer challenge."},
+            now=now + timedelta(hours=1),
+        )
+        stale = complete
+        unknown = self._seed_data()
+
+        cases = (
+            ("Blocked", blocked, now + timedelta(hours=1)),
+            ("Stale", stale, now + timedelta(minutes=3060, seconds=1)),
+            ("Unknown", unknown, now),
+        )
+        for state, data, built_at in cases:
+            with self.subTest(state=state):
+                payload = build_payload(data, self.DASHBOARD_URL, now=built_at)
+                combined = payload["body_text"] + payload["body_html"]
+                self.assertIn(f"Refresh state: {state}", payload["body_text"])
+                self.assertIn("Last successful data refresh:", payload["body_text"])
+                self.assertIn("Latest attempt:", payload["body_text"])
+                self.assertIn("State reason:", payload["body_text"])
+                self.assertIn(self.DASHBOARD_URL, combined)
+                self.assertNotIn("$", combined)
+                self.assertNotIn("best row", combined.lower())
+                self.assertNotIn("current best", combined.lower())
+
+    def test_dashboard_embeds_and_displays_refresh_metadata_with_inline_hydration(self):
+        from tools.render_dashboard import render_dashboard
+        from tools.tracker_core import apply_evidence
+
+        now, evidence = self._fresh_evidence()
+        data = apply_evidence(self._seed_data(), evidence, now=now)
+
+        html_text = render_dashboard(
+            data,
+            history_rows=[],
+            dashboard_url=self.DASHBOARD_URL,
+            now=now,
+        )
+
+        self.assertIn('id="refresh-status"', html_text)
+        self.assertIn("Last successful data refresh", html_text)
+        self.assertIn("Jul 1, 2026 7:00 AM CDT", html_text)
+        self.assertIn("Age", html_text)
+        self.assertIn("Every 48 hours", html_text)
+        self.assertIn("Next due", html_text)
+        self.assertIn("Latest attempt", html_text)
+        self.assertIn("State reason", html_text)
+        self.assertIn("Render / publish", html_text)
+        self.assertIn('<script type="application/json" id="refresh-metadata">', html_text)
+        self.assertIn("data-refresh-hydration", html_text)
+        self.assertIn('"state": "Fresh"', html_text)
+
+    def test_checked_in_data_migrates_exact_july_8_success_without_literal_freshness(self):
+        with open("data/deals.json", encoding="utf-8") as f:
+            data = json.load(f)
+
+        self.assertNotIn("generated_at_utc", data["meta"])
+        self.assertNotIn("fresh_evidence_status", data["daily_brief"])
+        self.assertEqual(data["refresh"]["data_refreshed_at_utc"], "2026-07-08T06:02:29Z")
+        self.assertEqual(data["refresh"]["last_attempt_at_utc"], "2026-07-08T06:02:29Z")
+        self.assertEqual(data["refresh"]["last_attempt_status"], "success")
+        self.assertEqual(data["refresh"]["cadence_minutes"], 2880)
+        self.assertEqual(data["refresh"]["grace_minutes"], 180)
+        self.assertEqual(data["refresh"]["timezone"], "America/Chicago")
+        self.assertFalse(data["refresh"]["archived"])
+        self.assertEqual(data["refresh"]["source_count"], 16)
+        self.assertEqual(data["refresh"]["row_count"], 16)
+        self.assertIsInstance(data["refresh"]["quality_counts"], dict)
+        self.assertIsNone(data["refresh"]["published_at_utc"])
 
     def test_email_payload_has_exact_allowed_recipients(self):
         from tools.build_email import build_payload
@@ -480,7 +725,7 @@ hidden-mutations:
 
         now, evidence = self._fresh_evidence()
         data = apply_evidence(self._seed_data(), evidence, now=now)
-        rows = build_history_rows(data, today="2026-07-01")
+        rows = build_history_rows(data, today="2026-07-01", now=now)
         self.assertEqual(len(rows), 2)
 
         with tempfile.TemporaryDirectory() as tmp:

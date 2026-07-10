@@ -4,14 +4,17 @@ import argparse
 import html
 import json
 import os
+import re
 from datetime import datetime, timezone
 
 try:
     from .tracker_core import best_rows_by_target, money
     from .audience_guard import validate_email_payload
+    from .refresh_state import evaluate_refresh, format_central, utc_iso
 except ImportError:
     from tracker_core import best_rows_by_target, money
     from audience_guard import validate_email_payload
+    from refresh_state import evaluate_refresh, format_central, utc_iso
 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -33,39 +36,83 @@ def warning_text(row):
     return ", ".join(row["warnings"])
 
 
-def build_payload(data, dashboard_url=DEFAULT_DASHBOARD_URL):
+def _non_actionable_reason(value):
+    return re.sub(
+        r"\$\s?\d[\d,]*(?:\.\d{1,2})?",
+        "[price withheld]",
+        str(value or "Not recorded"),
+    )
+
+
+def build_payload(data, dashboard_url=DEFAULT_DASHBOARD_URL, now=None):
+    now = now or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    state = evaluate_refresh(data.get("refresh"), now=now)
     best = best_rows_by_target(data)
     ps5 = best.get("ps5")
     tv = best.get("tv")
-    generated = data.get("meta", {}).get("generated_at_utc") or datetime.now(timezone.utc).isoformat()
-    status = data.get("daily_brief", {}).get("fresh_evidence_status") or "unknown"
+    generated = utc_iso(now)
+    status = state["state"]
     subject = f"PS5 + 65-inch TV deal tracker - {status}"
+
+    success_text = state["data_refreshed_at_central"]
+    attempt_text = state["last_attempt_at_central"]
+    if state["last_attempt_status"] != "unknown":
+        attempt_text = f"{attempt_text} ({state['last_attempt_status']})"
+    reason = state["reason"]
 
     lines = [
         "PS5 and TV deal tracker",
         "",
-        f"Fresh evidence status: {status}",
-        f"PS5 best row: {item_label(ps5)}",
-        f"TV best row: {item_label(tv)}",
-        f"PS5 warnings: {warning_text(ps5)}",
-        f"TV warnings: {warning_text(tv)}",
-        "",
+        f"Refresh state: {status}",
+        f"Last successful data refresh: {success_text}",
+        f"Latest attempt: {attempt_text}",
+        f"State reason: {_non_actionable_reason(reason)}",
         f"Dashboard: {dashboard_url}",
-        f"Generated: {generated}",
-        "",
-        "Confirm final cart total, tax, pickup/delivery timing, and seller identity before buying.",
     ]
     html_body = [
         "<h2>PS5 and TV deal tracker</h2>",
-        f"<p><strong>Fresh evidence status:</strong> {html.escape(status)}</p>",
-        "<table border='1' cellpadding='6' cellspacing='0' style='border-collapse:collapse;font-family:Arial;font-size:13px'>",
-        "<tr style='background:#152238;color:#fff'><th>Target</th><th>Best row</th><th>Warnings</th></tr>",
-        f"<tr><td>PS5</td><td>{html.escape(item_label(ps5))}</td><td>{html.escape(warning_text(ps5))}</td></tr>",
-        f"<tr><td>65-inch TV</td><td>{html.escape(item_label(tv))}</td><td>{html.escape(warning_text(tv))}</td></tr>",
-        "</table>",
+        f"<p><strong>Refresh state:</strong> {html.escape(status)}</p>",
+        f"<p><strong>Last successful data refresh:</strong> {html.escape(success_text)}</p>",
+        f"<p><strong>Latest attempt:</strong> {html.escape(attempt_text)}</p>",
+        f"<p><strong>State reason:</strong> {html.escape(_non_actionable_reason(reason))}</p>",
         f"<p>Dashboard: <a href='{html.escape(dashboard_url)}'>{html.escape(dashboard_url)}</a></p>",
-        f"<p style='color:#666;font-size:12px'>Generated: {html.escape(generated)}. Confirm final cart total, tax, pickup/delivery timing, and seller identity before buying.</p>",
     ]
+    if status in {"Fresh", "Due"}:
+        lines[5:5] = [
+            f"PS5 best row: {item_label(ps5)}",
+            f"TV best row: {item_label(tv)}",
+            f"PS5 warnings: {warning_text(ps5)}",
+            f"TV warnings: {warning_text(tv)}",
+        ]
+        html_body[5:5] = [
+            "<table border='1' cellpadding='6' cellspacing='0' style='border-collapse:collapse;font-family:Arial;font-size:13px'>",
+            "<tr style='background:#152238;color:#fff'><th>Target</th><th>Best row</th><th>Warnings</th></tr>",
+            f"<tr><td>PS5</td><td>{html.escape(item_label(ps5))}</td><td>{html.escape(warning_text(ps5))}</td></tr>",
+            f"<tr><td>65-inch TV</td><td>{html.escape(item_label(tv))}</td><td>{html.escape(warning_text(tv))}</td></tr>",
+            "</table>",
+        ]
+    else:
+        lines.extend(
+            [
+                "",
+                "Recommendations are withheld until a complete represented snapshot is Fresh or Due.",
+            ]
+        )
+        html_body.append(
+            "<p><strong>Recommendations withheld:</strong> a complete represented snapshot must be Fresh or Due.</p>"
+        )
+    lines.extend(
+        [
+            "",
+            f"Email built: {format_central(now)}",
+            "Confirm final cart total, tax, pickup/delivery timing, and seller identity before buying.",
+        ]
+    )
+    html_body.append(
+        f"<p style='color:#666;font-size:12px'>Email built: {html.escape(format_central(now))}. Confirm final cart total, tax, pickup/delivery timing, and seller identity before buying.</p>"
+    )
     payload = {
         "to": RECIPIENTS[:],
         "cc": [],
@@ -75,6 +122,7 @@ def build_payload(data, dashboard_url=DEFAULT_DASHBOARD_URL):
         "body_html": "\n".join(html_body),
         "dashboard_url": dashboard_url,
         "generated_at": generated,
+        "refresh_state": status,
     }
     validate_email_payload(payload, data)
     return payload
