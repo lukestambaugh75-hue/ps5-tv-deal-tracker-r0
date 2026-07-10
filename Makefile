@@ -25,6 +25,7 @@ json:
 
 test:
 	$(PY) -m unittest discover -s tests
+	node --test tests/test_dashboard_ui.mjs
 
 check: json test
 	$(PY) tools/verify_dashboard.py

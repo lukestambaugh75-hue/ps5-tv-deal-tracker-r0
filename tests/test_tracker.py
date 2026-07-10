@@ -61,6 +61,8 @@ hidden-mutations:
     def test_check_dry_run_excludes_mutating_tracker_commands(self):
         check_contract = self._check_commands_from_makefile("Makefile")
 
+        self.assertIn("node --test tests/test_dashboard_ui.mjs", check_contract)
+
         for forbidden in (
             "refresh_prices_browser.py",
             "append_history.py",
@@ -494,7 +496,7 @@ hidden-mutations:
                 for row in complete["items"]:
                     self.assertNotIn(row["product_name"], combined)
 
-    def test_dashboard_embeds_and_displays_refresh_metadata_with_inline_hydration(self):
+    def test_dashboard_embeds_refresh_metadata_and_uses_local_hydration_module(self):
         from tools.render_dashboard import render_dashboard
         from tools.tracker_core import apply_evidence
 
@@ -519,10 +521,9 @@ hidden-mutations:
         self.assertIn("State reason", html_text)
         self.assertIn("Render / publish", html_text)
         self.assertIn('<script type="application/json" id="refresh-metadata">', html_text)
-        self.assertIn("data-refresh-hydration", html_text)
+        self.assertIn('src="assets/dashboard-ui.mjs"', html_text)
         self.assertIn('"state": "Fresh"', html_text)
-        self.assertIn("applyRecommendationState", html_text)
-        self.assertIn("heroStateNode.textContent = state", html_text)
+        self.assertNotIn("data-refresh-hydration", html_text)
 
     def test_future_success_stays_unknown_in_static_and_hydrated_state(self):
         from tools.render_dashboard import render_dashboard
@@ -547,9 +548,7 @@ hidden-mutations:
         )
         self.assertNotIn(">Best row from last successful refresh", html_text)
         self.assertNotIn(">Stored values from the last successful refresh", html_text)
-        self.assertIn("if (elapsed < 0)", html_text)
-        self.assertIn('applyState("Unknown"', html_text)
-        self.assertIn("node.dataset.unknownText", html_text)
+        self.assertIn('src="assets/dashboard-ui.mjs"', html_text)
 
     def test_no_success_dashboard_uses_unverified_provenance(self):
         from tools.render_dashboard import render_dashboard
@@ -686,6 +685,44 @@ hidden-mutations:
         self.assertEqual(completed.returncode, 1)
         self.assertIn("audience boundary violation", completed.stderr)
         self.assertIn("redirect", completed.stderr.lower())
+
+    def test_audience_guard_reads_local_module_and_rejects_network_or_navigation_code(self):
+        from tools.audience_guard import AudienceBoundaryError, validate_dashboard_html
+
+        data, html_text, _ = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>", '<script type="module" src="assets/test-ui.mjs"></script></body>'
+        )
+        cases = {
+            "absolute URL": 'const endpoint = "https://evil.example/data";',
+            "dynamic import": 'import("./other.mjs");',
+            "fetch": 'fetch("/data.json");',
+            "navigation": 'window.location.assign("/other");',
+        }
+        for label, source in cases.items():
+            with self.subTest(case=label), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / "assets").mkdir()
+                (root / "assets" / "electronics-hero.png").write_bytes(b"fixture")
+                (root / "assets" / "test-ui.mjs").write_text(source, encoding="utf-8")
+                with self.assertRaises(AudienceBoundaryError):
+                    validate_dashboard_html(html_text, data, asset_root=root)
+
+    def test_audience_guard_allows_safe_history_replace_state_in_local_module(self):
+        from tools.audience_guard import validate_dashboard_html
+
+        data, html_text, _ = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>", '<script type="module" src="assets/test-ui.mjs"></script></body>'
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "assets").mkdir()
+            (root / "assets" / "electronics-hero.png").write_bytes(b"fixture")
+            (root / "assets" / "test-ui.mjs").write_text(
+                'history.replaceState(null, "", "?view=details");', encoding="utf-8"
+            )
+            validate_dashboard_html(html_text, data, asset_root=root)
 
     def test_audience_guard_rejects_inline_event_handler_navigation(self):
         data, html_text, payload = self._audience_fixture()
@@ -887,6 +924,68 @@ hidden-mutations:
         self.assertIn("not a recommendation", html)
         self.assertNotIn("Andante", html)
         self.assertNotIn("8826", html)
+
+    def test_dashboard_renders_each_fixture_row_once_in_six_field_compact_table(self):
+        import re
+
+        from tools.render_dashboard import render_dashboard
+
+        with open("data/deals.json", encoding="utf-8") as f:
+            data = json.load(f)
+        html_text = render_dashboard(
+            data,
+            history_rows=[],
+            dashboard_url=self.DASHBOARD_URL,
+            now=datetime(2026, 7, 8, 7, 0, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(html_text.count('data-deal-row="'), len(data["items"]))
+        for item in data["items"]:
+            self.assertEqual(html_text.count(f'data-deal-row="{item["id"]}"'), 1)
+        rendered_rows = re.findall(r'<tr data-deal-row="[^"]+".*?</tr>', html_text, re.DOTALL)
+        self.assertEqual(len(rendered_rows), len(data["items"]))
+        self.assertTrue(all(row.count("<td data-label=") == 6 for row in rendered_rows))
+        self.assertIn('data-view-control="compact"', html_text)
+        self.assertIn('data-view-control="details"', html_text)
+        self.assertIn('data-row-controls', html_text)
+        self.assertIn('data-empty-state', html_text)
+        self.assertIn('data-result-count', html_text)
+        self.assertIn('<details class="row-details">', html_text)
+        self.assertIn('<details class="history-disclosure panel"', html_text)
+        self.assertNotIn('<details class="history-disclosure panel" open', html_text)
+
+    def test_every_generated_table_cell_has_a_nonempty_mobile_label(self):
+        from html.parser import HTMLParser
+        from tools.render_dashboard import render_dashboard
+
+        class CellParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.labels = []
+
+            def handle_starttag(self, tag, attrs):
+                if tag == "td":
+                    self.labels.append(dict(attrs).get("data-label"))
+
+        with open("data/deals.json", encoding="utf-8") as f:
+            data = json.load(f)
+        parser = CellParser()
+        parser.feed(render_dashboard(data, history_rows=[]))
+
+        self.assertTrue(parser.labels)
+        self.assertTrue(all(label and label.strip() for label in parser.labels))
+
+    def test_dashboard_css_keeps_mobile_table_visible_without_fixed_width_escape_hatches(self):
+        from tools.render_dashboard import render_dashboard
+
+        with open("data/deals.json", encoding="utf-8") as f:
+            data = json.load(f)
+        html_text = render_dashboard(data, history_rows=[])
+
+        self.assertNotIn("overflow-x: hidden", html_text)
+        self.assertNotRegex(html_text, r"min-width:\s*[1-9][0-9]*(?:px|rem)")
+        self.assertIn("position: sticky", html_text)
+        self.assertIn(":focus-visible", html_text)
 
     def test_history_rows_are_lf_only_and_one_row_per_target(self):
         from tools.append_history import build_history_rows, write_history

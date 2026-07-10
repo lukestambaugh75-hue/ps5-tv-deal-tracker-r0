@@ -5,6 +5,7 @@ import html
 import json
 import os
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 
 try:
     from .tracker_core import best_rows_by_target, money, snapshot_is_represented
@@ -117,26 +118,68 @@ def render_best_card(target_id, label, best, provenance="current"):
         </article>"""
 
 
+def row_status(item):
+    warnings = " ".join(str(value) for value in (item.get("warnings") or [])).lower()
+    evidence_class = str(item.get("evidence_class") or "").lower()
+    stock_status = str(item.get("stock_status") or "").lower()
+    if "out of stock" in warnings or evidence_class == "out_of_stock" or "unavailable" in stock_status:
+        return "blocked"
+    if item.get("warnings"):
+        return "caution"
+    return "ready"
+
+
+def source_label(url):
+    host = urlsplit(str(url or "")).netloc.lower()
+    return host.removeprefix("www.") or "retailer source"
+
+
 def render_item_row(item, provenance="current"):
     product = item.get("product_name") or item.get("model")
+    status = row_status(item)
+    status_label = {"ready": "Ready", "caution": "Caution", "blocked": "Blocked"}[status]
+    item_id = item.get("id") or f"{item.get('target_id', 'row')}-{item.get('retailer', 'source')}"
+    price = item.get("price")
     return f"""
-          <tr>
-            <td>{esc(item.get("target_id", "").upper())}</td>
-            <td>{esc(item.get("retailer"))}</td>
-            <td><a href="{esc(item.get("url"))}">{esc(product)}</a></td>
-            <td>{esc(money(item.get("price")))}</td>
-            <td>{esc(item.get("stock_status") or "-")}</td>
-            <td>{render_warning_chips(item, provenance=provenance)}</td>
+          <tr data-deal-row="{esc(item_id)}" data-target="{esc(item.get('target_id'))}" data-retailer="{esc(item.get('retailer'))}" data-status="{status}" data-price="{esc(price)}">
+            <td data-label="Target">{esc(item.get("target_id", "").upper())}</td>
+            <td data-label="Retailer">{esc(item.get("retailer"))}</td>
+            <td data-label="Product"><a href="{esc(item.get("url"))}">{esc(product)}</a></td>
+            <td data-label="Price">{esc(money(price))}</td>
+            <td data-label="Stock">{esc(item.get("stock_status") or "-")}</td>
+            <td data-label="Warning / action">
+              <div class="row-action-content">
+                <span class="row-status {status}">{status_label}</span>
+                <div class="chips">{render_warning_chips(item, provenance=provenance)}</div>
+                <details class="row-details">
+                  <summary>Evidence and buying notes</summary>
+                  <dl class="row-evidence">
+                    <div><dt>Evidence</dt><dd>{esc(readable_evidence(item.get("evidence_class")))}. {esc(item.get("evidence_text") or "No evidence note recorded.")}</dd></div>
+                    <div><dt>Condition</dt><dd>{esc(item.get("condition") or "Not recorded")}</dd></div>
+                    <div><dt>Pickup / delivery</dt><dd>{esc(item.get("pickup_delivery") or "Check retailer")}</dd></div>
+                    <div><dt>Acquired</dt><dd>{esc(format_central(item.get("captured_at")))}</dd></div>
+                    <div><dt>Source</dt><dd><a href="{esc(item.get("url"))}">{esc(source_label(item.get("url")))}</a></dd></div>
+                  </dl>
+                </details>
+              </div>
+            </td>
           </tr>"""
 
 
 def render_history_rows(history_rows):
     if not history_rows:
-        return '<tr><td colspan="5">History starts after the first scheduled run.</td></tr>'
+        return '<tr><td data-label="History" colspan="5">History starts after the first scheduled run.</td></tr>'
     latest = history_rows[-20:]
     return "\n".join(
-        f"<tr><td>{esc(row.get('date'))}</td><td>{esc(row.get('target_id'))}</td><td>{esc(row.get('retailer'))}</td><td>{esc(row.get('product_name'))}</td><td>{esc(money(row.get('price')))}</td></tr>"
+        f"<tr><td data-label=\"Date\">{esc(row.get('date'))}</td><td data-label=\"Target\">{esc(row.get('target_id'))}</td><td data-label=\"Retailer\">{esc(row.get('retailer'))}</td><td data-label=\"Product\">{esc(row.get('product_name'))}</td><td data-label=\"Price\">{esc(money(row.get('price')))}</td></tr>"
         for row in latest
+    )
+
+
+def render_filter_options(values):
+    return "".join(
+        f'<option value="{esc(value)}">{esc(value)}</option>'
+        for value in sorted({str(value) for value in values if value}, key=str.casefold)
     )
 
 
@@ -214,6 +257,12 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     attempt_label = refresh["last_attempt_at_central"]
     if refresh["last_attempt_status"] != "unknown":
         attempt_label = f"{attempt_label} ({refresh['last_attempt_status']})"
+    target_options = "".join(
+        f'<option value="{esc(target.get("id"))}">{esc(target.get("label") or target.get("id"))}</option>'
+        for target in data.get("targets", [])
+        if target.get("id")
+    )
+    retailer_options = render_filter_options(item.get("retailer") for item in items)
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -236,8 +285,8 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
       --red: #ff8b8b;
     }}
     * {{ box-sizing: border-box; }}
-    body {{ margin: 0; overflow-x: hidden; background: var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.5; }}
-    a {{ color: var(--blue); text-underline-offset: 3px; }}
+    body {{ margin: 0; background: var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.5; }}
+    a {{ color: var(--blue); text-underline-offset: 3px; overflow-wrap: anywhere; }}
     .wrap {{ width: min(1180px, calc(100% - 32px)); margin: 0 auto; }}
     .hero {{ min-height: 560px; display: flex; align-items: flex-end; background: linear-gradient(90deg, rgba(16,19,24,.98), rgba(16,19,24,.9) 48%, rgba(16,19,24,.48) 78%, rgba(16,19,24,.26)), url("assets/electronics-hero.png") center/cover no-repeat; border-bottom: 1px solid var(--line); }}
     .hero-content {{ padding: 68px 0 38px; max-width: 900px; }}
@@ -250,7 +299,7 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     .eyebrow {{ color: var(--green); text-transform: uppercase; font-size: .76rem; font-weight: 800; letter-spacing: .08em; }}
     .metrics, .best-grid {{ display: grid; gap: 14px; }}
     .metrics {{ grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 26px; }}
-    .metric, .best-card, .panel {{ background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow: hidden; }}
+    .metric, .best-card, .panel {{ background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }}
     .metric strong {{ display: block; font-size: 1.75rem; margin-top: 4px; }}
     .metric small {{ overflow-wrap: anywhere; }}
     .refresh-block {{ margin-top: 14px; background: rgba(23,29,38,.94); }}
@@ -264,6 +313,12 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     .refresh-facts div {{ min-width: 0; padding: 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 6px; background: rgba(255,255,255,.035); }}
     .refresh-reason {{ margin-top: 12px; color: var(--muted); }}
     .secondary-time {{ color: var(--muted); font-size: .8rem; margin-top: 10px; }}
+    .view-switch {{ margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: rgba(23,29,38,.94); }}
+    .segmented {{ display: inline-flex; flex-wrap: wrap; gap: 7px; }}
+    button, select {{ border: 1px solid var(--line); border-radius: 6px; background: var(--panel-2); color: var(--ink); font: inherit; }}
+    button {{ min-height: 40px; padding: 8px 14px; cursor: pointer; }}
+    button[aria-pressed="true"] {{ color: #17351e; background: var(--green); border-color: var(--green); font-weight: 800; }}
+    button:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible {{ outline: 3px solid var(--blue); outline-offset: 3px; }}
     .color-index {{ margin-top: 14px; background: rgba(101,167,255,.08); }}
     .color-index p {{ margin-bottom: 0; }}
     .best-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 26px 0 0; }}
@@ -283,9 +338,36 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     .fact-list div {{ padding: 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 6px; background: rgba(255,255,255,.035); }}
     dt {{ color: var(--muted); font-size: .78rem; }}
     dd {{ margin: 0; font-weight: 700; overflow-wrap: anywhere; }}
-    table {{ width: 100%; border-collapse: collapse; font-size: .92rem; }}
+    .row-controls {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0 12px; }}
+    .control {{ display: grid; gap: 6px; min-width: 0; }}
+    .control span {{ color: var(--muted); font-size: .78rem; font-weight: 700; }}
+    .control select {{ width: 100%; min-height: 42px; padding: 8px 10px; }}
+    .result-line {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px; color: var(--muted); }}
+    .empty-state {{ border: 1px solid var(--amber); border-radius: 6px; padding: 12px; color: var(--amber); background: rgba(255,203,107,.08); }}
+    table {{ width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .92rem; }}
     th, td {{ text-align: left; padding: 11px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }}
-    th {{ color: var(--green); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }}
+    th {{ position: sticky; top: 0; z-index: 1; color: var(--green); background: var(--panel); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }}
+    th:nth-child(1) {{ width: 8%; }}
+    th:nth-child(2) {{ width: 12%; }}
+    th:nth-child(3) {{ width: 27%; }}
+    th:nth-child(4) {{ width: 10%; }}
+    th:nth-child(5) {{ width: 18%; }}
+    th:nth-child(6) {{ width: 25%; }}
+    td {{ overflow-wrap: anywhere; }}
+    tr[hidden] {{ display: none; }}
+    .row-status {{ display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; font-size: .76rem; font-weight: 800; }}
+    .row-status.ready {{ color: #17351e; background: var(--green); border-color: var(--green); }}
+    .row-status.caution {{ color: #2f1e00; background: var(--amber); border-color: var(--amber); }}
+    .row-status.blocked {{ color: #3b0b0b; background: var(--red); border-color: var(--red); }}
+    .row-details {{ margin-top: 8px; }}
+    .row-action-content {{ min-width: 0; }}
+    summary {{ color: var(--blue); cursor: pointer; font-weight: 750; }}
+    .row-evidence {{ grid-template-columns: 1fr; gap: 8px; }}
+    .row-evidence div {{ padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); }}
+    .history-disclosure {{ padding: 0; }}
+    .history-disclosure > summary {{ padding: 16px; list-style-position: inside; }}
+    .history-content {{ padding: 0 16px 16px; }}
+    [data-details-only][hidden] {{ display: none; }}
     body.recommendations-historical [data-recommendation-label], body.recommendations-historical #price-ladder th {{ color: var(--amber); }}
     body.recommendations-unverified [data-recommendation-label], body.recommendations-unverified #price-ladder th {{ color: var(--muted); }}
     .note {{ color: var(--muted); }}
@@ -299,11 +381,13 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
       .lead {{ max-width: 100%; font-size: .96rem; overflow-wrap: anywhere; word-break: break-word; }}
       .desktop-summary {{ display: none; }}
       .mobile-summary {{ display: inline; }}
-      .metrics, .best-grid, dl, .refresh-facts {{ grid-template-columns: 1fr; }}
+      .metrics, .best-grid, dl, .refresh-facts, .row-controls {{ grid-template-columns: 1fr; }}
       table, thead, tbody, tr, th, td {{ display: block; }}
       thead {{ display: none; }}
-      td {{ border-bottom: 0; padding: 9px 0; }}
+      td {{ display: grid; grid-template-columns: minmax(0, .42fr) minmax(0, 1fr); gap: 10px; border-bottom: 0; padding: 9px 0; }}
+      td::before {{ content: attr(data-label); color: var(--green); font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }}
       tr {{ border-bottom: 1px solid var(--line); padding: 10px 0; }}
+      .row-details, .chips {{ margin-top: 0; }}
     }}
   </style>
 </head>
@@ -327,6 +411,7 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
         data-cadence-minutes="{refresh['cadence_minutes']}"
         data-grace-minutes="{refresh['grace_minutes']}"
         data-attempt-status="{esc(refresh['last_attempt_status'])}"
+        data-attempt-reason="{esc(refresh['last_attempt_reason'])}"
         data-state-reason="{esc(refresh['reason'])}"
         data-archived="{str(refresh['archived']).lower()}"
         data-represented="{str(represented).lower()}"
@@ -349,6 +434,16 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
         <p class="refresh-reason"><strong>State reason:</strong> <span id="refresh-reason">{esc(refresh['reason'])}</span></p>
         <p class="secondary-time"><strong>Render / publish:</strong> rendered {esc(format_central(now))}; published {esc(format_central(published_at))}. These do not change the underlying data age.</p>
       </section>
+      <section class="panel view-switch" aria-label="Dashboard view">
+        <div>
+          <span class="eyebrow">Viewing mode</span>
+          <p class="note">Compact keeps the comparison first. Details adds history and methodology.</p>
+        </div>
+        <div class="segmented" role="group" aria-label="Choose dashboard view">
+          <button type="button" data-view-control="compact" aria-pressed="true">Compact</button>
+          <button type="button" data-view-control="details" aria-pressed="false">Details</button>
+        </div>
+      </section>
       <div class="panel color-index">
         <span class="eyebrow">Color index</span>
         <p class="note"><strong>Green</strong> = recommended or ready to act. <strong>Blue</strong> = information only, like links, charts, totals, or neutral controls; it is not a recommendation. <strong>Amber</strong> = caution; check details before acting. <strong>Red</strong> = blocked or stop; do not act until fixed.</p>
@@ -365,23 +460,34 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
         <span class="eyebrow">Price ladder</span>
         <h2 data-retailer-heading data-fresh-text="Current Retailer Rows" data-historical-text="Stored Retailer Rows" data-unknown-text="Unverified Stored Rows">{esc(row_heading)}</h2>
         <p id="historical-warning" class="historical-warning" data-historical-text="{esc(HISTORICAL_WARNING)}" data-unknown-text="{esc(UNKNOWN_WARNING)}"{' hidden' if actionable else ''}>{esc(provenance_warning)}</p>
-        <table>
-          <thead><tr><th>Target</th><th>Retailer</th><th>Product</th><th>Price</th><th>Stock</th><th>Warnings</th></tr></thead>
-          <tbody>{''.join(render_item_row(item, provenance=provenance) for item in items) or '<tr><td colspan="6">Evidence pending.</td></tr>'}</tbody>
+        <div class="row-controls" data-row-controls aria-label="Comparison controls">
+          <label class="control"><span>Target</span><select data-filter-target><option value="">All targets</option>{target_options}</select></label>
+          <label class="control"><span>Retailer</span><select data-filter-retailer><option value="">All retailers</option>{retailer_options}</select></label>
+          <label class="control"><span>Status</span><select data-filter-status><option value="">All statuses</option><option value="ready">Ready</option><option value="caution">Caution</option><option value="blocked">Blocked</option></select></label>
+          <label class="control"><span>Price order</span><select data-sort-direction><option value="asc">Low to high</option><option value="desc">High to low</option></select></label>
+        </div>
+        <p class="result-line"><strong data-result-count aria-live="polite">{len(items)} of {len(items)} rows</strong><span>Sorted by price</span></p>
+        <p class="empty-state" data-empty-state hidden>No rows match these filters. Clear one or more filters to see the comparison.</p>
+        <table aria-label="PS5 and television retailer comparison">
+          <thead><tr><th>Target</th><th>Retailer</th><th>Product</th><th>Price</th><th>Stock</th><th>Warning / action</th></tr></thead>
+          <tbody data-deal-table-body>{''.join(render_item_row(item, provenance=provenance) for item in items) or '<tr><td data-label="Evidence" colspan="6">Evidence pending.</td></tr>'}</tbody>
         </table>
       </div>
     </section>
-    <section class="section" id="price-history">
-      <div class="wrap panel">
-        <span class="eyebrow">Price History</span>
-        <h2>Best Row Trend</h2>
-        <table>
-          <thead><tr><th>Date</th><th>Target</th><th>Retailer</th><th>Product</th><th>Price</th></tr></thead>
-          <tbody>{render_history_rows(history_rows)}</tbody>
-        </table>
+    <section class="section" data-details-only hidden>
+      <div class="wrap">
+        <details class="history-disclosure panel" id="price-history">
+          <summary><span class="eyebrow">Price History</span> Best Row Trend</summary>
+          <div class="history-content">
+            <table aria-label="Best row price history">
+              <thead><tr><th>Date</th><th>Target</th><th>Retailer</th><th>Product</th><th>Price</th></tr></thead>
+              <tbody>{render_history_rows(history_rows)}</tbody>
+            </table>
+          </div>
+        </details>
       </div>
     </section>
-    <section class="section" id="evidence-guardrails">
+    <section class="section" id="evidence-guardrails" data-details-only hidden>
       <div class="wrap panel">
         <span class="eyebrow">Run Rules</span>
         <h2>Evidence Guardrails</h2>
@@ -392,94 +498,7 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
   </main>
   <footer class="wrap footer">Confirm final cart total, tax, pickup or delivery timing, and seller identity before buying.</footer>
   <script type="application/json" id="refresh-metadata">{refresh_json}</script>
-  <script data-refresh-hydration>
-    (() => {{
-      const root = document.querySelector("[data-refresh-root]");
-      if (!root) return;
-      const stateNode = document.getElementById("refresh-status");
-      const heroStateNode = document.getElementById("hero-data-state");
-      const ageNode = document.getElementById("refresh-age");
-      const reasonNode = document.getElementById("refresh-reason");
-      const successAt = Date.parse(root.dataset.successAt || "");
-      const attemptAt = Date.parse(root.dataset.attemptAt || "");
-      const cadence = Number(root.dataset.cadenceMinutes || 0);
-      const grace = Number(root.dataset.graceMinutes || 0);
-      const attemptStatus = root.dataset.attemptStatus || "unknown";
-      const archived = root.dataset.archived === "true";
-      const represented = root.dataset.represented === "true";
-      const labels = {{
-        Fresh: "Data is within the 48-hour refresh cadence.",
-        Due: "Data is due but remains inside the 3-hour grace window.",
-        Stale: "Data is older than the cadence and grace window.",
-        Unknown: "No successful data refresh is recorded.",
-        Archived: "This tracker is archived and no longer refreshes."
-      }};
-      const ageLabel = (minutes) => {{
-        const days = Math.floor(minutes / 1440);
-        const hours = Math.floor((minutes % 1440) / 60);
-        const mins = minutes % 60;
-        if (days) return `${{days}} day${{days === 1 ? "" : "s"}} ${{hours}} hour${{hours === 1 ? "" : "s"}}`;
-        if (hours) return `${{hours}} hour${{hours === 1 ? "" : "s"}}`;
-        return `${{mins}} minute${{mins === 1 ? "" : "s"}}`;
-      }};
-      const applyRecommendationState = (state) => {{
-        const actionable = represented && ["Fresh", "Due"].includes(state);
-        const mode = actionable ? "fresh" : state === "Unknown" ? "unknown" : "historical";
-        document.body.classList.toggle("recommendations-historical", !actionable);
-        document.body.classList.toggle("recommendations-unverified", mode === "unknown");
-        document.querySelectorAll("[data-recommendation-label], [data-recommendation-summary], [data-retailer-heading], [data-row-metric]").forEach((node) => {{
-          node.textContent = mode === "fresh" ? node.dataset.freshText : mode === "unknown" ? node.dataset.unknownText : node.dataset.historicalText;
-        }});
-        document.querySelectorAll("[data-recommendation-card]").forEach((card) => {{
-          card.classList.toggle("historical", mode === "historical");
-          card.classList.toggle("unverified", mode === "unknown");
-        }});
-        document.querySelectorAll("[data-fresh-treatment]").forEach((chip) => {{
-          chip.classList.toggle("good", mode === "fresh");
-          chip.classList.toggle("historical", mode === "historical");
-          chip.classList.toggle("unverified", mode === "unknown");
-          chip.textContent = mode === "fresh" ? chip.dataset.freshText : mode === "unknown" ? chip.dataset.unknownText : chip.dataset.historicalText;
-        }});
-        const warning = document.getElementById("historical-warning");
-        if (warning) {{
-          warning.hidden = actionable;
-          warning.textContent = mode === "unknown" ? warning.dataset.unknownText : warning.dataset.historicalText;
-        }}
-      }};
-      const applyState = (state, reason, age) => {{
-        stateNode.textContent = state;
-        heroStateNode.textContent = state;
-        stateNode.className = `state-badge ${{state.toLowerCase()}}`;
-        ageNode.textContent = age;
-        reasonNode.textContent = reason;
-        applyRecommendationState(state);
-      }};
-      const update = () => {{
-        if (archived) {{
-          applyState("Archived", labels.Archived, ageNode.textContent);
-          return;
-        }}
-        if (!Number.isFinite(successAt)) {{
-          applyState("Unknown", labels.Unknown, "Unknown");
-          return;
-        }}
-        const elapsed = Date.now() - successAt;
-        if (elapsed < 0) {{
-          applyState("Unknown", "The recorded data refresh is in the future.", "Unknown");
-          return;
-        }}
-        const age = Math.floor(elapsed / 60000);
-        if (!["success", "unknown"].includes(attemptStatus) && Number.isFinite(attemptAt) && attemptAt > successAt) {{
-          applyState("Blocked", root.dataset.stateReason, ageLabel(age));
-          return;
-        }}
-        const state = elapsed <= cadence * 60000 ? "Fresh" : elapsed <= (cadence + grace) * 60000 ? "Due" : "Stale";
-        applyState(state, labels[state], ageLabel(age));
-      }};
-      update();
-      window.setInterval(update, 60000);
-    }})();
-  </script>
+  <script type="module" src="assets/dashboard-ui.mjs"></script>
 </body>
 </html>"""
 

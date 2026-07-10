@@ -25,8 +25,17 @@ CSS_IMPORT_RE = re.compile(
 ABSOLUTE_URL_RE = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
 SCRIPT_NAVIGATION_RE = re.compile(
     r"(?:\b(?:window\.)?location(?:\.href)?\s*=|"
-    r"\b(?:window\.)?location\.(?:assign|replace)\s*\(|"
+    r"\b(?:window\.)?location\.(?:assign|replace|reload)\s*\(|"
     r"\bwindow\.open\s*\()",
+    re.IGNORECASE,
+)
+SCRIPT_DYNAMIC_IMPORT_RE = re.compile(r"\bimport\s*\(", re.IGNORECASE)
+SCRIPT_FETCH_RE = re.compile(r"\bfetch\s*\(", re.IGNORECASE)
+SCRIPT_HISTORY_NAV_RE = re.compile(
+    r"\b(?:window\.)?history\.(?:pushState|go|back|forward)\s*\(", re.IGNORECASE
+)
+STATIC_MODULE_RE = re.compile(
+    r"\b(?:import|export)\s+(?:[^;\n]*?\s+from\s+)?['\"]([^'\"]+)['\"]",
     re.IGNORECASE,
 )
 FORBIDDEN_VISIBLE_NAV = (
@@ -200,6 +209,51 @@ def _validate_local_resource(value, context, asset_root):
         raise AudienceBoundaryError(f"resource escapes assets/ in {context}: {value}") from exc
     if not candidate.is_file():
         raise AudienceBoundaryError(f"local resource does not exist in {context}: {value}")
+    return candidate
+
+
+def _validate_local_script(path, asset_root, inspected=None):
+    """Read every local module in the graph and reject network/navigation capabilities."""
+    inspected = inspected if inspected is not None else set()
+    path = Path(path).resolve()
+    if path in inspected:
+        return
+    inspected.add(path)
+    try:
+        source = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise AudienceBoundaryError(f"could not read local script {path.name}: {exc}") from exc
+
+    if _absolute_urls(source):
+        raise AudienceBoundaryError(f"absolute URL is not allowed in local script: {path.name}")
+    if SCRIPT_DYNAMIC_IMPORT_RE.search(source):
+        raise AudienceBoundaryError(f"dynamic import is not allowed in local script: {path.name}")
+    if SCRIPT_FETCH_RE.search(source):
+        raise AudienceBoundaryError(f"fetch is not allowed in local script: {path.name}")
+    if SCRIPT_NAVIGATION_RE.search(source) or SCRIPT_HISTORY_NAV_RE.search(source):
+        raise AudienceBoundaryError(
+            f"script redirect or navigation code is not allowed in local script: {path.name}"
+        )
+
+    assets_root = (Path(asset_root).resolve() / "assets").resolve()
+    for reference in STATIC_MODULE_RE.findall(source):
+        parsed = urlsplit(reference)
+        if parsed.scheme or parsed.netloc or reference.startswith(("/", "//")):
+            raise AudienceBoundaryError(
+                f"module import must remain local to assets/: {reference}"
+            )
+        candidate = (path.parent / parsed.path).resolve()
+        try:
+            candidate.relative_to(assets_root)
+        except ValueError as exc:
+            raise AudienceBoundaryError(
+                f"module import escapes assets/: {reference}"
+            ) from exc
+        if candidate.suffix.lower() not in {".js", ".mjs"} or not candidate.is_file():
+            raise AudienceBoundaryError(
+                f"local module import does not exist or is not JavaScript: {reference}"
+            )
+        _validate_local_script(candidate, asset_root, inspected=inspected)
 
 
 def _validate_navigation(value, context, allowed_urls):
@@ -242,9 +296,12 @@ def validate_dashboard_html(html_text, data, asset_root=ROOT):
     """Validate active URLs and visible navigation in the generated dashboard."""
     allowed_urls = allowed_output_urls(data)
     parser = _parse_html(html_text)
+    inspected_scripts = set()
     for kind, value, context in parser.references:
         if kind == "resource":
-            _validate_local_resource(value, context, asset_root)
+            candidate = _validate_local_resource(value, context, asset_root)
+            if candidate and candidate.suffix.lower() in {".js", ".mjs"}:
+                _validate_local_script(candidate, asset_root, inspected=inspected_scripts)
         else:
             _validate_navigation(value, context, allowed_urls)
     _validate_visible_navigation(parser)
