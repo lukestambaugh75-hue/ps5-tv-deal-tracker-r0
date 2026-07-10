@@ -126,7 +126,11 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     try:
-        now_utc = _parse_utc(args.now_utc) if args.now_utc else datetime.now(timezone.utc)
+        now_utc = (
+            _parse_utc(args.now_utc)
+            if args.now_utc is not None
+            else datetime.now(timezone.utc)
+        )
         allowed, normalized_utc, local_now, reason = _decision(now_utc)
     except ValueError as exc:
         print(

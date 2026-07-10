@@ -353,7 +353,7 @@ hidden-mutations:
         self.assertIn("REASON=", completed.stdout)
 
     def test_schedule_gate_cli_invalid_input_exits_two_without_run_marker(self):
-        for invalid in ("not-a-timestamp", "2026-07-02T11:00:00"):
+        for invalid in ("", "not-a-timestamp", "2026-07-02T11:00:00"):
             with self.subTest(now_utc=invalid):
                 completed = self._run_schedule_gate(invalid)
                 self.assertEqual(completed.returncode, 2)
