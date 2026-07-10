@@ -75,11 +75,17 @@ export function calculateRefreshState(refresh = {}, now = new Date()) {
   const graceMinutes = Number(refresh.grace_minutes || 180);
   const attemptStatus = normalized(refresh.last_attempt_status) || "unknown";
   const attemptReason = String(refresh.last_attempt_reason || "").trim();
+  const elapsedMilliseconds = successAt !== null && nowAt !== null
+    ? nowAt - successAt
+    : null;
+  const ageMinutes = elapsedMilliseconds === null
+    ? null
+    : Math.max(0, Math.floor(elapsedMilliseconds / 60000));
   const result = {
     state: "Unknown",
     reason: "No successful data refresh is recorded.",
-    ageMinutes: null,
-    ageLabel: "Unknown",
+    ageMinutes,
+    ageLabel: formatAge(ageMinutes),
   };
 
   if (archived) {
@@ -91,11 +97,14 @@ export function calculateRefreshState(refresh = {}, now = new Date()) {
   }
   if (successAt === null || nowAt === null) return result;
 
-  const elapsedMilliseconds = nowAt - successAt;
   if (elapsedMilliseconds < 0) {
-    return { ...result, reason: "The recorded data refresh is in the future." };
+    return {
+      ...result,
+      reason: "The recorded data refresh is in the future.",
+      ageMinutes: null,
+      ageLabel: "Unknown",
+    };
   }
-  const ageMinutes = Math.floor(elapsedMilliseconds / 60000);
   const ageLabel = formatAge(ageMinutes);
   if (
     !SUCCESSFUL_ATTEMPTS.has(attemptStatus)
@@ -219,9 +228,11 @@ function initializeView(documentRoot) {
       panel.hidden = selected !== "details";
     });
     if (updateQuery) {
-      const query = setViewQuery(window.location.search, selected);
-      const nextPath = `${window.location.pathname}${query}${window.location.hash}`;
-      window.history.replaceState(null, "", nextPath);
+      window.history.replaceState(
+        null,
+        "",
+        (selected === "details" ? "?view=details" : "") + window.location.hash,
+      );
     }
   };
 

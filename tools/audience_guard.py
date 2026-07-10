@@ -29,15 +29,7 @@ SCRIPT_NAVIGATION_RE = re.compile(
     r"\bwindow\.open\s*\()",
     re.IGNORECASE,
 )
-SCRIPT_DYNAMIC_IMPORT_RE = re.compile(r"\bimport\s*\(", re.IGNORECASE)
-SCRIPT_FETCH_RE = re.compile(r"\bfetch\s*\(", re.IGNORECASE)
-SCRIPT_HISTORY_NAV_RE = re.compile(
-    r"\b(?:window\.)?history\.(?:pushState|go|back|forward)\s*\(", re.IGNORECASE
-)
-STATIC_MODULE_RE = re.compile(
-    r"\b(?:import|export)\s+(?:[^;\n]*?\s+from\s+)?['\"]([^'\"]+)['\"]",
-    re.IGNORECASE,
-)
+UNSAFE_HISTORY_METHODS = {"back", "forward", "go", "pushState"}
 FORBIDDEN_VISIBLE_NAV = (
     "Main Dashboard",
     "Deal Trackers",
@@ -212,8 +204,234 @@ def _validate_local_resource(value, context, asset_root):
     return candidate
 
 
+def _javascript_tokens(source):
+    """Tokenize executable JavaScript while skipping comments and string bodies."""
+    tokens = []
+    length = len(source)
+
+    def scan(index, stop_on_closing_brace=False):
+        brace_depth = 0
+        while index < length:
+            char = source[index]
+            if stop_on_closing_brace and char == "}" and brace_depth == 0:
+                return index + 1
+            if char.isspace():
+                index += 1
+                continue
+            if source.startswith("//", index):
+                newline = source.find("\n", index + 2)
+                index = length if newline == -1 else newline + 1
+                continue
+            if source.startswith("/*", index):
+                closing = source.find("*/", index + 2)
+                if closing == -1:
+                    raise AudienceBoundaryError("unterminated JavaScript block comment")
+                index = closing + 2
+                continue
+            if char in {"'", '"'}:
+                quote = char
+                index += 1
+                value = []
+                escaped = False
+                while index < length:
+                    current = source[index]
+                    if current == "\\":
+                        escaped = True
+                        value.append(current)
+                        index += 1
+                        if index < length:
+                            value.append(source[index])
+                            index += 1
+                        continue
+                    if current == quote:
+                        index += 1
+                        break
+                    value.append(current)
+                    index += 1
+                else:
+                    raise AudienceBoundaryError("unterminated JavaScript string")
+                tokens.append(("string", "".join(value), escaped))
+                continue
+            if char == "`":
+                index += 1
+                while index < length:
+                    current = source[index]
+                    if current == "\\":
+                        index += 2
+                        continue
+                    if current == "`":
+                        index += 1
+                        break
+                    if source.startswith("${", index):
+                        tokens.append(("template", "", False))
+                        index = scan(index + 2, stop_on_closing_brace=True)
+                        continue
+                    index += 1
+                else:
+                    raise AudienceBoundaryError("unterminated JavaScript template")
+                continue
+            if char.isalpha() or char in {"_", "$"}:
+                end = index + 1
+                while end < length and (
+                    source[end].isalnum() or source[end] in {"_", "$"}
+                ):
+                    end += 1
+                tokens.append(("identifier", source[index:end], False))
+                index = end
+                continue
+            if char == "{":
+                brace_depth += 1
+            elif char == "}" and brace_depth:
+                brace_depth -= 1
+            tokens.append(("punctuation", char, False))
+            index += 1
+        if stop_on_closing_brace:
+            raise AudienceBoundaryError("unterminated JavaScript template interpolation")
+        return index
+
+    scan(0)
+    return tokens
+
+
+def _call_arguments(tokens, opening_index):
+    arguments = []
+    current = []
+    depth = 0
+    pairs = {"(": ")", "[": "]", "{": "}"}
+    closing = set(pairs.values())
+    for index in range(opening_index, len(tokens)):
+        value = tokens[index][1]
+        if value in pairs:
+            depth += 1
+            if depth > 1:
+                current.append(tokens[index])
+            continue
+        if value in closing:
+            depth -= 1
+            if depth == 0:
+                if current or not arguments:
+                    arguments.append(current)
+                return arguments, index
+            current.append(tokens[index])
+            continue
+        if value == "," and depth == 1:
+            arguments.append(current)
+            current = []
+            continue
+        current.append(tokens[index])
+    raise AudienceBoundaryError("unterminated JavaScript function call")
+
+
+def _safe_replace_state_argument(argument):
+    if len(argument) == 1 and argument[0][0] == "string":
+        value = argument[0][1]
+        escaped = argument[0][2]
+        return not escaped and (not value or value.startswith(("?", "#")))
+    values = [token[1] for token in argument]
+    expected = [
+        "(",
+        "selected",
+        "=",
+        "=",
+        "=",
+        "details",
+        "?",
+        "?view=details",
+        ":",
+        "",
+        ")",
+        "+",
+        "window",
+        ".",
+        "location",
+        ".",
+        "hash",
+    ]
+    string_positions = {5, 7, 9}
+    return values == expected and all(
+        argument[index][0] == "string" and not argument[index][2]
+        for index in string_positions
+    )
+
+
+def _validate_script_tokens(tokens, script_name):
+    values = [token[1] for token in tokens]
+    for index, token in enumerate(tokens):
+        kind, value, _ = token
+        next_value = values[index + 1] if index + 1 < len(values) else None
+        if kind == "identifier" and value == "import":
+            raise AudienceBoundaryError(
+                f"imports are not allowed in self-contained local script: {script_name}"
+            )
+        if kind == "identifier" and value == "fetch" and next_value == "(":
+            raise AudienceBoundaryError(f"fetch is not allowed in local script: {script_name}")
+        if kind == "identifier" and value == "export":
+            following = values[index + 1 :]
+            if following and following[0] == "*":
+                if "from" in following[: following.index(";") if ";" in following else None]:
+                    raise AudienceBoundaryError(
+                        f"re-exports are not allowed in local script: {script_name}"
+                    )
+            elif following and following[0] == "{":
+                depth = 0
+                closing_index = None
+                for offset, candidate in enumerate(following):
+                    if candidate == "{":
+                        depth += 1
+                    elif candidate == "}":
+                        depth -= 1
+                        if depth == 0:
+                            closing_index = offset
+                            break
+                if closing_index is not None and following[closing_index + 1 : closing_index + 2] == ["from"]:
+                    raise AudienceBoundaryError(
+                        f"re-exports are not allowed in local script: {script_name}"
+                    )
+        if kind == "identifier" and value == "window":
+            if values[index : index + 4] == ["window", ".", "open", "("]:
+                raise AudienceBoundaryError(
+                    f"script redirect or navigation code is not allowed: {script_name}"
+                )
+        if kind == "identifier" and value == "location":
+            if next_value == "=":
+                raise AudienceBoundaryError(
+                    f"script redirect or navigation code is not allowed: {script_name}"
+                )
+            if values[index + 1 : index + 4] in (
+                [".", "assign", "("],
+                [".", "replace", "("],
+                [".", "reload", "("],
+            ):
+                raise AudienceBoundaryError(
+                    f"script redirect or navigation code is not allowed: {script_name}"
+                )
+            if values[index + 1 : index + 4] == [".", "href", "="]:
+                raise AudienceBoundaryError(
+                    f"script redirect or navigation code is not allowed: {script_name}"
+                )
+        if kind == "identifier" and value == "history":
+            if (
+                values[index + 1 : index + 2] == ["."]
+                and values[index + 2 : index + 3]
+                and values[index + 2] in UNSAFE_HISTORY_METHODS
+            ):
+                raise AudienceBoundaryError(
+                    f"history navigation is not allowed in local script: {script_name}"
+                )
+        if kind == "identifier" and value == "replaceState":
+            if next_value != "(":
+                raise AudienceBoundaryError(
+                    f"indirect history replacement is not allowed: {script_name}"
+                )
+            arguments, _ = _call_arguments(tokens, index + 1)
+            if len(arguments) != 3 or not _safe_replace_state_argument(arguments[2]):
+                raise AudienceBoundaryError(
+                    f"history.replaceState must use a same-page query or hash: {script_name}"
+                )
+
+
 def _validate_local_script(path, asset_root, inspected=None):
-    """Read every local module in the graph and reject network/navigation capabilities."""
+    """Read every referenced local module and reject network/navigation capabilities."""
     inspected = inspected if inspected is not None else set()
     path = Path(path).resolve()
     if path in inspected:
@@ -226,34 +444,7 @@ def _validate_local_script(path, asset_root, inspected=None):
 
     if _absolute_urls(source):
         raise AudienceBoundaryError(f"absolute URL is not allowed in local script: {path.name}")
-    if SCRIPT_DYNAMIC_IMPORT_RE.search(source):
-        raise AudienceBoundaryError(f"dynamic import is not allowed in local script: {path.name}")
-    if SCRIPT_FETCH_RE.search(source):
-        raise AudienceBoundaryError(f"fetch is not allowed in local script: {path.name}")
-    if SCRIPT_NAVIGATION_RE.search(source) or SCRIPT_HISTORY_NAV_RE.search(source):
-        raise AudienceBoundaryError(
-            f"script redirect or navigation code is not allowed in local script: {path.name}"
-        )
-
-    assets_root = (Path(asset_root).resolve() / "assets").resolve()
-    for reference in STATIC_MODULE_RE.findall(source):
-        parsed = urlsplit(reference)
-        if parsed.scheme or parsed.netloc or reference.startswith(("/", "//")):
-            raise AudienceBoundaryError(
-                f"module import must remain local to assets/: {reference}"
-            )
-        candidate = (path.parent / parsed.path).resolve()
-        try:
-            candidate.relative_to(assets_root)
-        except ValueError as exc:
-            raise AudienceBoundaryError(
-                f"module import escapes assets/: {reference}"
-            ) from exc
-        if candidate.suffix.lower() not in {".js", ".mjs"} or not candidate.is_file():
-            raise AudienceBoundaryError(
-                f"local module import does not exist or is not JavaScript: {reference}"
-            )
-        _validate_local_script(candidate, asset_root, inspected=inspected)
+    _validate_script_tokens(_javascript_tokens(source), path.name)
 
 
 def _validate_navigation(value, context, allowed_urls):

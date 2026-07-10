@@ -144,3 +144,18 @@ test("refresh hydration applies the calculated state to the generated nodes", ()
   assert.equal(nodes.get("hero-data-state").textContent, "Fresh");
   assert.equal(nodes.get("refresh-age").textContent, "30 minutes");
 });
+
+test("archived refresh retains the computed age when success evidence exists", () => {
+  const result = calculateRefreshState({
+    data_refreshed_at_utc: "2026-07-10T12:00:00Z",
+    last_attempt_at_utc: "2026-07-10T12:00:00Z",
+    last_attempt_status: "success",
+    cadence_minutes: 60,
+    grace_minutes: 30,
+    archived: true,
+  }, new Date("2026-07-10T12:30:00Z"));
+
+  assert.equal(result.state, "Archived");
+  assert.equal(result.ageMinutes, 30);
+  assert.equal(result.ageLabel, "30 minutes");
+});

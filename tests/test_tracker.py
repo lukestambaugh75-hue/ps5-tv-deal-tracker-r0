@@ -1,4 +1,5 @@
 import csv
+import html
 import io
 import json
 import os
@@ -696,6 +697,9 @@ hidden-mutations:
         cases = {
             "absolute URL": 'const endpoint = "https://evil.example/data";',
             "dynamic import": 'import("./other.mjs");',
+            "comment-separated dynamic import": 'import/**/("./other.mjs");',
+            "multiline static import": 'import {\n  unsafe\n} from "./other.mjs";',
+            "multiline re-export": 'export {\n  unsafe\n} from "./other.mjs";',
             "fetch": 'fetch("/data.json");',
             "navigation": 'window.location.assign("/other");',
         }
@@ -707,6 +711,26 @@ hidden-mutations:
                 (root / "assets" / "test-ui.mjs").write_text(source, encoding="utf-8")
                 with self.assertRaises(AudienceBoundaryError):
                     validate_dashboard_html(html_text, data, asset_root=root)
+
+    def test_audience_guard_ignores_import_words_inside_comments_and_strings(self):
+        from tools.audience_guard import validate_dashboard_html
+
+        data, html_text, _ = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>", '<script type="module" src="assets/test-ui.mjs"></script></body>'
+        )
+        safe_source = """
+const message = 'import(\"./not-code.mjs\")';
+// import { notCode } from "./not-code.mjs";
+/* import ("./still-not-code.mjs"); */
+history.replaceState(null, "", "?view=details");
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "assets").mkdir()
+            (root / "assets" / "electronics-hero.png").write_bytes(b"fixture")
+            (root / "assets" / "test-ui.mjs").write_text(safe_source, encoding="utf-8")
+            validate_dashboard_html(html_text, data, asset_root=root)
 
     def test_audience_guard_allows_safe_history_replace_state_in_local_module(self):
         from tools.audience_guard import validate_dashboard_html
@@ -723,6 +747,28 @@ hidden-mutations:
                 'history.replaceState(null, "", "?view=details");', encoding="utf-8"
             )
             validate_dashboard_html(html_text, data, asset_root=root)
+
+    def test_audience_guard_rejects_cross_path_history_replace_state(self):
+        from tools.audience_guard import AudienceBoundaryError, validate_dashboard_html
+
+        data, html_text, _ = self._audience_fixture()
+        html_text = html_text.replace(
+            "</body>", '<script type="module" src="assets/test-ui.mjs"></script></body>'
+        )
+        cases = (
+            'history.replaceState(null, "", "/kegerator");',
+            'history.replaceState(null, "", "/kegerator" + "?view=details");',
+            'history.replaceState(null, "", window.location.pathname + "?view=details");',
+            'const setViewQuery = () => "/kegerator"; history.replaceState(null, "", setViewQuery() + window.location.hash);',
+        )
+        for source in cases:
+            with self.subTest(source=source), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / "assets").mkdir()
+                (root / "assets" / "electronics-hero.png").write_bytes(b"fixture")
+                (root / "assets" / "test-ui.mjs").write_text(source, encoding="utf-8")
+                with self.assertRaises(AudienceBoundaryError):
+                    validate_dashboard_html(html_text, data, asset_root=root)
 
     def test_audience_guard_rejects_inline_event_handler_navigation(self):
         data, html_text, payload = self._audience_fixture()
@@ -953,6 +999,23 @@ hidden-mutations:
         self.assertIn('<details class="row-details">', html_text)
         self.assertIn('<details class="history-disclosure panel"', html_text)
         self.assertNotIn('<details class="history-disclosure panel" open', html_text)
+        self.assertIn(
+            '</header>\n  <main>\n    <section class="section" id="price-ladder">',
+            html_text,
+        )
+        self.assertLess(html_text.index('data-view-control="details"'), html_text.index('id="price-ladder"'))
+        self.assertLess(html_text.index('id="price-ladder"'), html_text.index('class="panel color-index"'))
+        self.assertLess(html_text.index('id="price-ladder"'), html_text.index('id="best-buys"'))
+
+        summaries = re.findall(r'<summary>Evidence: ([^<]+)</summary>', html_text)
+        self.assertEqual(len(summaries), len(data["items"]))
+        self.assertEqual(len(set(summaries)), len(summaries))
+        for item in data["items"]:
+            expected = (
+                f'<summary>Evidence: {html.escape(item["retailer"])} · '
+                f'{html.escape(item["product_name"])}</summary>'
+            )
+            self.assertIn(expected, html_text)
 
     def test_every_generated_table_cell_has_a_nonempty_mobile_label(self):
         from html.parser import HTMLParser
@@ -986,6 +1049,11 @@ hidden-mutations:
         self.assertNotRegex(html_text, r"min-width:\s*[1-9][0-9]*(?:px|rem)")
         self.assertIn("position: sticky", html_text)
         self.assertIn(":focus-visible", html_text)
+        self.assertIn("button { min-height: 44px", html_text)
+        self.assertIn(".control select { width: 100%; min-height: 44px", html_text)
+        with open("assets/dashboard-ui.mjs", encoding="utf-8") as f:
+            ui_source = f.read()
+        self.assertNotIn("location.pathname", ui_source)
 
     def test_history_rows_are_lf_only_and_one_row_per_target(self):
         from tools.append_history import build_history_rows, write_history

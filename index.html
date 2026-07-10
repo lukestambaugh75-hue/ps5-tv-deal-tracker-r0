@@ -51,7 +51,7 @@
     .view-switch { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: rgba(23,29,38,.94); }
     .segmented { display: inline-flex; flex-wrap: wrap; gap: 7px; }
     button, select { border: 1px solid var(--line); border-radius: 6px; background: var(--panel-2); color: var(--ink); font: inherit; }
-    button { min-height: 40px; padding: 8px 14px; cursor: pointer; }
+    button { min-height: 44px; padding: 8px 14px; cursor: pointer; }
     button[aria-pressed="true"] { color: #17351e; background: var(--green); border-color: var(--green); font-weight: 800; }
     button:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
     .color-index { margin-top: 14px; background: rgba(101,167,255,.08); }
@@ -76,7 +76,7 @@
     .row-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0 12px; }
     .control { display: grid; gap: 6px; min-width: 0; }
     .control span { color: var(--muted); font-size: .78rem; font-weight: 700; }
-    .control select { width: 100%; min-height: 42px; padding: 8px 10px; }
+    .control select { width: 100%; min-height: 44px; padding: 8px 10px; }
     .result-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px; color: var(--muted); }
     .empty-state { border: 1px solid var(--amber); border-radius: 6px; padding: 12px; color: var(--amber); background: rgba(255,203,107,.08); }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .92rem; }
@@ -167,7 +167,7 @@
           <div><dt>Evidence represented</dt><dd>16 rows from 16 sources</dd></div>
         </dl>
         <p class="refresh-reason"><strong>State reason:</strong> <span id="refresh-reason">Data is older than the cadence and grace window.</span></p>
-        <p class="secondary-time"><strong>Render / publish:</strong> rendered Jul 10, 2026 8:39 AM CDT; published Not recorded. These do not change the underlying data age.</p>
+        <p class="secondary-time"><strong>Render / publish:</strong> rendered Jul 10, 2026 8:49 AM CDT; published Not recorded. These do not change the underlying data age.</p>
       </section>
       <section class="panel view-switch" aria-label="Dashboard view">
         <div>
@@ -179,36 +179,6 @@
           <button type="button" data-view-control="details" aria-pressed="false">Details</button>
         </div>
       </section>
-      <div class="panel color-index">
-        <span class="eyebrow">Color index</span>
-        <p class="note"><strong>Green</strong> = recommended or ready to act. <strong>Blue</strong> = information only, like links, charts, totals, or neutral controls; it is not a recommendation. <strong>Amber</strong> = caution; check details before acting. <strong>Red</strong> = blocked or stop; do not act until fixed.</p>
-      </div>
-      <div class="best-grid" id="best-buys">
-        
-        <article class="best-card historical" data-recommendation-card>
-          <span class="eyebrow" data-recommendation-label data-fresh-text="Best Buy Today - PS5" data-historical-text="Best row from last successful refresh - PS5" data-unknown-text="Unverified stored row - no trustworthy refresh time - PS5">Best row from last successful refresh - PS5</span>
-          <h3>Target: $449.99</h3>
-          <p><a href="https://www.target.com/c/playstation-5/-/N-hj96d">PlayStation 5 Disc Astrobot Bundle</a></p>
-          <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
-          <dl class="fact-list">
-            <div><dt>Availability</dt><dd>add-to-cart path visible in live result</dd></div>
-            <div><dt>Pickup / delivery</dt><dd>Target live result exposed Add to cart; confirm Houston-area same-day delivery, pickup, or shipping before buying.</dd></div>
-            <div><dt>Evidence</dt><dd>big-box public price</dd></div>
-          </dl>
-        </article>
-        
-        <article class="best-card historical" data-recommendation-card>
-          <span class="eyebrow" data-recommendation-label data-fresh-text="Best Buy Today - 65-inch TV" data-historical-text="Best row from last successful refresh - 65-inch TV" data-unknown-text="Unverified stored row - no trustworthy refresh time - 65-inch TV">Best row from last successful refresh - 65-inch TV</span>
-          <h3>Walmart: $398</h3>
-          <p><a href="https://www.walmart.com/browse/electronics/65-inch-tvs/3944_1060825_2489948_3421074">Hisense 65 inch M7 Series Mini-LED QLED 4K UHD Google Smart TV</a></p>
-          <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
-          <dl class="fact-list">
-            <div><dt>Availability</dt><dd>available</dd></div>
-            <div><dt>Pickup / delivery</dt><dd>Walmart result showed free shipping arriving today and free pickup as soon as 9am; confirm Houston-area store and delivery timing before buying.</dd></div>
-            <div><dt>Evidence</dt><dd>Houston visible buy path</dd></div>
-          </dl>
-        </article>
-      </div>
     </div>
   </header>
   <main>
@@ -239,7 +209,7 @@
                 <span class="row-status ready">Ready</span>
                 <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Target · PlayStation 5 Disc Astrobot Bundle</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>big-box public price. Target live PlayStation 5 results showed PlayStation 5 Disc Astrobot Bundle at $449.99 with Add to cart.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -262,7 +232,7 @@
                 <span class="row-status ready">Ready</span>
                 <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Target · PlayStation 5 Digital Console Slim NBA 2K25 Bundle</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>big-box public price. Target live PlayStation 5 results showed PlayStation 5 Digital Console Slim NBA 2K25 Bundle at $499.99 with Add to cart.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -285,7 +255,7 @@
                 <span class="row-status ready">Ready</span>
                 <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Walmart · PlayStation 5 Digital Console Slim - 825GB</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>big-box public price. Walmart live PS5 console result showed PlayStation 5 Digital Console Slim - 825GB at current price $569.99, was $599.99, with Add controls and free shipping in 3+ days.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -308,7 +278,7 @@
                 <span class="row-status ready">Ready</span>
                 <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Best Buy · PlayStation 5 Slim Console Digital Edition</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>big-box public price. Best Buy live PS5 console page showed PlayStation 5 Slim Console Digital Edition at $589.00, save $10.99 from comparable value $599.99, with Add to cart and free delivery by Tue, Jul 14.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -331,7 +301,7 @@
                 <span class="row-status blocked">Blocked</span>
                 <div class="chips"><span class="chip warn">manufacturer-direct reference</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: PlayStation Direct · PlayStation 5 Console - 1 TB</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>manufacturer reference. PlayStation Direct live PS5 console page showed PlayStation 5 Console - 1 TB at $649.00 and PlayStation 5 Digital Edition Console - 825 GB at $599.00 with currently unavailable text in the console grid.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -354,7 +324,7 @@
                 <span class="row-status caution">Caution</span>
                 <div class="chips"><span class="chip warn">marketplace seller</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Amazon · PS5 - Sony PlayStation 5 Digital Edition Gaming Console + Wireless Controller</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>marketplace seller. Amazon live product page showed PS5 Sony PlayStation 5 Digital Edition Gaming Console at $594.99, only one left in stock, ships from and sold by a third-party seller.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -377,7 +347,7 @@
                 <span class="row-status blocked">Blocked</span>
                 <div class="chips"><span class="chip warn">out of stock</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: GameStop · Sony PlayStation 5 Slim Console Disc Edition</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>out of stock. GameStop live page showed Sony PlayStation 5 Slim Console Disc Edition condition New at $649.99, Verify Address/Deliver it Today controls, and Currently Unavailable text.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -400,7 +370,7 @@
                 <span class="row-status ready">Ready</span>
                 <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Walmart · Hisense 65 inch M7 Series Mini-LED QLED 4K UHD Google Smart TV</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>Houston visible buy path. Walmart live 65-inch TV result showed Hisense 65 inch M7 Series Mini-LED QLED 4K UHD Google Smart TV 65M7SG at current price $398.00 with free shipping arriving today and free pickup as soon as 9am.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -423,7 +393,7 @@
                 <span class="row-status ready">Ready</span>
                 <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Walmart · VIZIO 65 Mini LED Quantum 4K QLED HDR Smart TV</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>Houston visible buy path. Walmart live 65-inch TV result showed VIZIO 65 Mini LED Quantum 4K QLED HDR Smart TV VQM65C-10 at current price $398.00 with free shipping arriving today and free pickup as soon as 9am.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -446,7 +416,7 @@
                 <span class="row-status caution">Caution</span>
                 <div class="chips"><span class="chip warn">entry-tier TV</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Walmart · VIZIO 65 inch Class Quantum 4K QLED HDR Smart TV</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>Houston visible buy path. Walmart live 65-inch TV result showed VIZIO 65 inch Class Quantum 4K QLED HDR Smart TV VQD65R-10 at rollback price $328.00, was $498.00, with free shipping arriving today and free pickup as soon as 9am.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -469,7 +439,7 @@
                 <span class="row-status ready">Ready</span>
                 <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Best Buy · TCL 65 inch Class QM5K Series 4K UHD QD-Mini LED Smart TV with Google TV</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>big-box public price. Best Buy live TCL page related-model selector showed TCL 65 inch Class QM5K Series QD-Mini LED Smart TV with Google TV at $449.99.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -492,7 +462,7 @@
                 <span class="row-status ready">Ready</span>
                 <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Best Buy · TCL 65 inch Class QM6K Series 4K UHD HDR QD Mini LED Smart TV with Google TV</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>big-box public price. Best Buy live TCL page showed TCL 65 inch Class QM6K Series 4K UHD HDR QD Mini LED Smart TV with Google TV at $529.99.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -515,7 +485,7 @@
                 <span class="row-status caution">Caution</span>
                 <div class="chips"><span class="chip warn">member-only price</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Sam&#x27;s Club · Samsung 65 inch Class Q7FD Series 4K QLED Smart TV</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>member only. Sam&#x27;s Club live 65-inch QLED result showed Samsung 65 inch Class Q7FD Series 4K QLED Smart TV at current price $497.99, was $547.99, with Add to Cart and available for shipping or pickup.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -538,7 +508,7 @@
                 <span class="row-status ready">Ready</span>
                 <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Home Depot · Samsung 65 inch Class QLED Q7F 4K Samsung Vision AI Smart TV</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>big-box public price. Home Depot live product page showed Samsung 65 inch Class QLED Q7F 4K Samsung Vision AI Smart TV at $629.99 with Limit 1 per order and pickup, shipping, and delivery support links.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -561,7 +531,7 @@
                 <span class="row-status ready">Ready</span>
                 <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Target · TCL 65 inch Class QM6K-Series 4K UHD HDR QD Mini LED Smart Google TV</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>big-box public price. Target live TCL QLED result showed TCL 65 inch Class QM6K-Series 4K UHD HDR QD Mini LED Smart Google TV 65QM6K at $799.99 with Add to cart.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -584,7 +554,7 @@
                 <span class="row-status caution">Caution</span>
                 <div class="chips"><span class="chip warn">marketplace seller</span></div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: Amazon · TCL 65-Inch QM6K QLED 4K Smart QD-Mini LED TV with Google TV plus S45H sound bar</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>marketplace seller. Amazon live product page for TCL 65-Inch QM6K with S45H sound bar bundle showed $607.98 with 10 percent savings from bundle was price $677.98.</dd></div>
                     <div><dt>Condition</dt><dd>new</dd></div>
@@ -597,6 +567,38 @@
             </td>
           </tr></tbody>
         </table>
+      </div>
+    </section>
+    <section class="section" id="recommendation-summary">
+      <div class="wrap">
+        <div class="panel color-index">
+          <span class="eyebrow">Color index</span>
+          <p class="note"><strong>Green</strong> = recommended or ready to act. <strong>Blue</strong> = information only, like links, charts, totals, or neutral controls; it is not a recommendation. <strong>Amber</strong> = caution; check details before acting. <strong>Red</strong> = blocked or stop; do not act until fixed.</p>
+        </div>
+        <div class="best-grid" id="best-buys">
+          <article class="best-card historical" data-recommendation-card>
+          <span class="eyebrow" data-recommendation-label data-fresh-text="Best Buy Today - PS5" data-historical-text="Best row from last successful refresh - PS5" data-unknown-text="Unverified stored row - no trustworthy refresh time - PS5">Best row from last successful refresh - PS5</span>
+          <h3>Target: $449.99</h3>
+          <p><a href="https://www.target.com/c/playstation-5/-/N-hj96d">PlayStation 5 Disc Astrobot Bundle</a></p>
+          <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
+          <dl class="fact-list">
+            <div><dt>Availability</dt><dd>add-to-cart path visible in live result</dd></div>
+            <div><dt>Pickup / delivery</dt><dd>Target live result exposed Add to cart; confirm Houston-area same-day delivery, pickup, or shipping before buying.</dd></div>
+            <div><dt>Evidence</dt><dd>big-box public price</dd></div>
+          </dl>
+        </article>
+          <article class="best-card historical" data-recommendation-card>
+          <span class="eyebrow" data-recommendation-label data-fresh-text="Best Buy Today - 65-inch TV" data-historical-text="Best row from last successful refresh - 65-inch TV" data-unknown-text="Unverified stored row - no trustworthy refresh time - 65-inch TV">Best row from last successful refresh - 65-inch TV</span>
+          <h3>Walmart: $398</h3>
+          <p><a href="https://www.walmart.com/browse/electronics/65-inch-tvs/3944_1060825_2489948_3421074">Hisense 65 inch M7 Series Mini-LED QLED 4K UHD Google Smart TV</a></p>
+          <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence" data-unknown-text="unverified evidence">historical evidence</span></div>
+          <dl class="fact-list">
+            <div><dt>Availability</dt><dd>available</dd></div>
+            <div><dt>Pickup / delivery</dt><dd>Walmart result showed free shipping arriving today and free pickup as soon as 9am; confirm Houston-area store and delivery timing before buying.</dd></div>
+            <div><dt>Evidence</dt><dd>Houston visible buy path</dd></div>
+          </dl>
+        </article>
+        </div>
       </div>
     </section>
     <section class="section" data-details-only hidden>
@@ -633,12 +635,12 @@
   <footer class="wrap footer">Confirm final cart total, tax, pickup or delivery timing, and seller identity before buying.</footer>
   <script type="application/json" id="refresh-metadata">{
   "age_label": "2 days 7 hours",
-  "age_minutes": 3337,
+  "age_minutes": 3347,
   "archived": false,
   "cadence_minutes": 2880,
   "data_refreshed_at_central": "Jul 8, 2026 1:02 AM CDT",
   "data_refreshed_at_utc": "2026-07-08T06:02:29Z",
-  "evaluated_at_utc": "2026-07-10T13:39:32.382654Z",
+  "evaluated_at_utc": "2026-07-10T13:49:42.713337Z",
   "grace_minutes": 180,
   "last_attempt_at_central": "Jul 8, 2026 1:02 AM CDT",
   "last_attempt_at_utc": "2026-07-08T06:02:29Z",
@@ -657,8 +659,8 @@
     "out_of_stock": 1
   },
   "reason": "Data is older than the cadence and grace window.",
-  "rendered_at_central": "Jul 10, 2026 8:39 AM CDT",
-  "rendered_at_utc": "2026-07-10T13:39:32.382654Z",
+  "rendered_at_central": "Jul 10, 2026 8:49 AM CDT",
+  "rendered_at_utc": "2026-07-10T13:49:42.713337Z",
   "row_count": 16,
   "source_count": 16,
   "stale_after_at_central": "Jul 10, 2026 4:02 AM CDT",

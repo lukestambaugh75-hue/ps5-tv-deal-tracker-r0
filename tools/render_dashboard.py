@@ -97,15 +97,13 @@ def render_best_card(target_id, label, best, provenance="current"):
         "unknown": " unverified",
     }[provenance]
     if not row:
-        return f"""
-        <article class="best-card blocked{treatment}" data-recommendation-card>
+        return f"""<article class="best-card blocked{treatment}" data-recommendation-card>
           <span class="eyebrow" data-recommendation-label data-fresh-text="{esc(fresh_label)}" data-historical-text="{esc(historical_label)}" data-unknown-text="{esc(unknown_label)}">{esc(labels[provenance])}</span>
           <h3>No represented row</h3>
           <p>The complete snapshot does not contain an available row for this target.</p>
         </article>"""
     product = row.get("product_name") or row.get("model")
-    return f"""
-        <article class="best-card{treatment}" data-recommendation-card>
+    return f"""<article class="best-card{treatment}" data-recommendation-card>
           <span class="eyebrow" data-recommendation-label data-fresh-text="{esc(fresh_label)}" data-historical-text="{esc(historical_label)}" data-unknown-text="{esc(unknown_label)}">{esc(labels[provenance])}</span>
           <h3>{esc(row.get("retailer"))}: {esc(money(row.get("price")))}</h3>
           <p><a href="{esc(row.get("url"))}">{esc(product)}</a></p>
@@ -152,7 +150,7 @@ def render_item_row(item, provenance="current"):
                 <span class="row-status {status}">{status_label}</span>
                 <div class="chips">{render_warning_chips(item, provenance=provenance)}</div>
                 <details class="row-details">
-                  <summary>Evidence and buying notes</summary>
+                  <summary>Evidence: {esc(item.get("retailer"))} · {esc(product)}</summary>
                   <dl class="row-evidence">
                     <div><dt>Evidence</dt><dd>{esc(readable_evidence(item.get("evidence_class")))}. {esc(item.get("evidence_text") or "No evidence note recorded.")}</dd></div>
                     <div><dt>Condition</dt><dd>{esc(item.get("condition") or "Not recorded")}</dd></div>
@@ -316,7 +314,7 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     .view-switch {{ margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: rgba(23,29,38,.94); }}
     .segmented {{ display: inline-flex; flex-wrap: wrap; gap: 7px; }}
     button, select {{ border: 1px solid var(--line); border-radius: 6px; background: var(--panel-2); color: var(--ink); font: inherit; }}
-    button {{ min-height: 40px; padding: 8px 14px; cursor: pointer; }}
+    button {{ min-height: 44px; padding: 8px 14px; cursor: pointer; }}
     button[aria-pressed="true"] {{ color: #17351e; background: var(--green); border-color: var(--green); font-weight: 800; }}
     button:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible {{ outline: 3px solid var(--blue); outline-offset: 3px; }}
     .color-index {{ margin-top: 14px; background: rgba(101,167,255,.08); }}
@@ -341,7 +339,7 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     .row-controls {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0 12px; }}
     .control {{ display: grid; gap: 6px; min-width: 0; }}
     .control span {{ color: var(--muted); font-size: .78rem; font-weight: 700; }}
-    .control select {{ width: 100%; min-height: 42px; padding: 8px 10px; }}
+    .control select {{ width: 100%; min-height: 44px; padding: 8px 10px; }}
     .result-line {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px; color: var(--muted); }}
     .empty-state {{ border: 1px solid var(--amber); border-radius: 6px; padding: 12px; color: var(--amber); background: rgba(255,203,107,.08); }}
     table {{ width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .92rem; }}
@@ -444,14 +442,6 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
           <button type="button" data-view-control="details" aria-pressed="false">Details</button>
         </div>
       </section>
-      <div class="panel color-index">
-        <span class="eyebrow">Color index</span>
-        <p class="note"><strong>Green</strong> = recommended or ready to act. <strong>Blue</strong> = information only, like links, charts, totals, or neutral controls; it is not a recommendation. <strong>Amber</strong> = caution; check details before acting. <strong>Red</strong> = blocked or stop; do not act until fixed.</p>
-      </div>
-      <div class="best-grid" id="best-buys">
-        {render_best_card("ps5", "PS5", best, provenance=provenance)}
-        {render_best_card("tv", "65-inch TV", best, provenance=provenance)}
-      </div>
     </div>
   </header>
   <main>
@@ -472,6 +462,18 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
           <thead><tr><th>Target</th><th>Retailer</th><th>Product</th><th>Price</th><th>Stock</th><th>Warning / action</th></tr></thead>
           <tbody data-deal-table-body>{''.join(render_item_row(item, provenance=provenance) for item in items) or '<tr><td data-label="Evidence" colspan="6">Evidence pending.</td></tr>'}</tbody>
         </table>
+      </div>
+    </section>
+    <section class="section" id="recommendation-summary">
+      <div class="wrap">
+        <div class="panel color-index">
+          <span class="eyebrow">Color index</span>
+          <p class="note"><strong>Green</strong> = recommended or ready to act. <strong>Blue</strong> = information only, like links, charts, totals, or neutral controls; it is not a recommendation. <strong>Amber</strong> = caution; check details before acting. <strong>Red</strong> = blocked or stop; do not act until fixed.</p>
+        </div>
+        <div class="best-grid" id="best-buys">
+          {render_best_card("ps5", "PS5", best, provenance=provenance)}
+          {render_best_card("tv", "65-inch TV", best, provenance=provenance)}
+        </div>
       </div>
     </section>
     <section class="section" data-details-only hidden>
