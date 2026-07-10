@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Enforce the standalone PS5/TV audience boundary on generated outputs."""
 import argparse
+import hashlib
 import html
 import json
 import os
@@ -17,27 +18,35 @@ HTML_PATH = ROOT / "index.html"
 EMAIL_PATH = ROOT / "out" / "latest-email.json"
 DEFAULT_DASHBOARD_URL = "https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/"
 EXPECTED_RECIPIENTS = ["lukestambaugh75@gmail.com", "devin.mullen89@gmail.com"]
+EXPECTED_DASHBOARD_UI_PATH = "assets/dashboard-ui.mjs"
+EXPECTED_DASHBOARD_UI_SHA256 = "e6669bbad8ab872727a39be78d1bca37f5ad054bdf66f1aef8b5e03d00b26329"
 
 CSS_URL_RE = re.compile(r"url\(\s*(['\"]?)(.*?)\1\s*\)", re.IGNORECASE | re.DOTALL)
 CSS_IMPORT_RE = re.compile(
     r"@import\s+(?:url\(\s*)?(['\"])(.*?)\1\s*\)?", re.IGNORECASE | re.DOTALL
 )
 ABSOLUTE_URL_RE = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
-SCRIPT_NAVIGATION_RE = re.compile(
-    r"(?:\b(?:window\.)?location(?:\.href)?\s*=|"
-    r"\b(?:window\.)?location\.(?:assign|replace|reload)\s*\(|"
-    r"\bwindow\.open\s*\()",
-    re.IGNORECASE,
-)
 UNSAFE_GLOBAL_IDENTIFIERS = {
     "EventSource",
+    "Function",
+    "Image",
     "WebSocket",
     "XMLHttpRequest",
+    "eval",
     "fetch",
     "open",
     "sendBeacon",
 }
-COMPUTED_MEMBER_ROOTS = {"globalThis", "history", "navigator", "self", "window"}
+COMPUTED_MEMBER_ROOTS = {
+    "document",
+    "globalThis",
+    "history",
+    "navigator",
+    "parent",
+    "self",
+    "top",
+    "window",
+}
 REGEX_PREFIX_KEYWORDS = {
     "await",
     "case",
@@ -72,6 +81,7 @@ REGEX_PREFIX_PUNCTUATION = {
     "[",
     "^",
     "{",
+    "}",
     "|",
     "~",
 }
@@ -122,6 +132,8 @@ class _ActiveUrlParser(HTMLParser):
         self._interactive_stack = []
         self._style_depth = 0
         self._script_depth = 0
+        self._current_script = None
+        self.scripts = []
 
     def _handle_tag(self, tag, attrs):
         attrs_by_name = {str(name).lower(): value for name, value in attrs}
@@ -130,7 +142,19 @@ class _ActiveUrlParser(HTMLParser):
         if tag == "style":
             self._style_depth += 1
         if tag == "script":
+            if self._current_script is not None:
+                raise AudienceBoundaryError("nested script elements are not allowed")
             self._script_depth += 1
+            script = {
+                "attrs": {
+                    str(name).lower(): html.unescape(str(value or "").strip())
+                    for name, value in attrs
+                },
+                "attribute_names": [str(name).lower() for name, _ in attrs],
+                "parts": [],
+            }
+            self.scripts.append(script)
+            self._current_script = script
 
         role = str(attrs_by_name.get("role") or "").strip().lower()
         is_interactive = tag in INTERACTIVE_TEXT_TAGS or role in INTERACTIVE_ROLES
@@ -187,6 +211,7 @@ class _ActiveUrlParser(HTMLParser):
             self._style_depth -= 1
         if tag == "script":
             self._script_depth -= 1
+            self._current_script = None
 
     def handle_endtag(self, tag):
         tag = tag.lower()
@@ -194,6 +219,7 @@ class _ActiveUrlParser(HTMLParser):
             self._style_depth -= 1
         if tag == "script" and self._script_depth:
             self._script_depth -= 1
+            self._current_script = None
         for index in range(len(self._interactive_stack) - 1, -1, -1):
             if self._interactive_stack[index]["tag"] == tag:
                 for element in self._interactive_stack[index:]:
@@ -208,10 +234,8 @@ class _ActiveUrlParser(HTMLParser):
             self.references.extend(_css_references(data, "<style>"))
             return
         if self._script_depth:
-            if SCRIPT_NAVIGATION_RE.search(data):
-                raise AudienceBoundaryError("script redirect or navigation code is not allowed")
-            for value in ABSOLUTE_URL_RE.findall(data):
-                self.references.append(("navigation", value.rstrip(".,;"), "<script> URL"))
+            if self._current_script is not None:
+                self._current_script["parts"].append(data)
             return
         text = data.strip()
         if text and self._interactive_stack:
@@ -458,6 +482,32 @@ def _validate_script_tokens(tokens, script_name):
             raise AudienceBoundaryError(
                 f"computed global member access is not allowed: {value} in {script_name}"
             )
+        if kind == "identifier" and value == "setViewQuery":
+            previous = values[index - 1] if index else None
+            is_exported_declaration = values[max(0, index - 2) : index] == [
+                "export",
+                "function",
+            ] and next_value == "("
+            is_direct_call = next_value == "(" and previous != "."
+            if previous in {"const", "let", "var"}:
+                raise AudienceBoundaryError(
+                    f"setViewQuery cannot be shadowed or reassigned: {script_name}"
+                )
+            if previous == "function" and values[max(0, index - 2) : index] != [
+                "export",
+                "function",
+            ]:
+                raise AudienceBoundaryError(
+                    f"setViewQuery cannot be shadowed or redefined: {script_name}"
+                )
+            if next_value == "=":
+                raise AudienceBoundaryError(
+                    f"setViewQuery cannot be reassigned: {script_name}"
+                )
+            if not is_exported_declaration and not is_direct_call:
+                raise AudienceBoundaryError(
+                    f"setViewQuery can only be declared once or called directly: {script_name}"
+                )
         if kind == "identifier" and value == "export":
             following = values[index + 1 :]
             if following and following[0] == "*":
@@ -485,12 +535,12 @@ def _validate_script_tokens(tokens, script_name):
             property_name = values[index + 2] if values[index + 1 : index + 2] == ["."] and index + 2 < len(values) else None
             if not is_window_chain or property_name not in {"hash", "search"}:
                 raise AudienceBoundaryError(
-                    f"only read-only window.location.search/hash is allowed: {script_name}"
+                    f"script redirect blocked; only read-only window.location.search/hash is allowed: {script_name}"
                 )
             lookahead = values[index + 3 : index + 6]
             if "=" in lookahead:
                 raise AudienceBoundaryError(
-                    f"window.location.{property_name} must remain read-only: {script_name}"
+                    f"script redirect blocked; window.location.{property_name} must remain read-only: {script_name}"
                 )
         if kind == "identifier" and value == "history":
             is_window_chain = values[max(0, index - 2) : index] == ["window", "."]
@@ -529,13 +579,90 @@ def _validate_local_script(path, asset_root, inspected=None):
         return
     inspected.add(path)
     try:
-        source = path.read_text(encoding="utf-8")
+        raw = path.read_bytes()
+        source = raw.decode("utf-8")
     except (OSError, UnicodeError) as exc:
         raise AudienceBoundaryError(f"could not read local script {path.name}: {exc}") from exc
 
+    digest = hashlib.sha256(raw).hexdigest()
+    if digest != EXPECTED_DASHBOARD_UI_SHA256:
+        raise AudienceBoundaryError(
+            f"local dashboard UI digest mismatch: expected {EXPECTED_DASHBOARD_UI_SHA256}, got {digest}"
+        )
+    _validate_script_source(source, path.name)
+
+
+def _validate_script_source(source, script_name):
     if _absolute_urls(source):
-        raise AudienceBoundaryError(f"absolute URL is not allowed in local script: {path.name}")
-    _validate_script_tokens(_javascript_tokens(source), path.name)
+        raise AudienceBoundaryError(
+            f"absolute URL or redirect is not allowed in local script: {script_name}"
+        )
+    _validate_script_tokens(_javascript_tokens(source), script_name)
+
+
+def _validate_dashboard_scripts(parser):
+    metadata_count = 0
+    module_count = 0
+    for script in parser.scripts:
+        attrs = script["attrs"]
+        names = script["attribute_names"]
+        if len(names) != len(set(names)):
+            raise AudienceBoundaryError("duplicate script attributes are not allowed")
+        content = "".join(script["parts"])
+        source = attrs.get("src")
+        if source:
+            if set(attrs) != {"src", "type"}:
+                raise AudienceBoundaryError(
+                    "dashboard UI script attributes must be exactly src and type"
+                )
+            if (
+                source != EXPECTED_DASHBOARD_UI_PATH
+                or attrs.get("type", "").lower() != "module"
+            ):
+                raise AudienceBoundaryError(
+                    f"only the pinned {EXPECTED_DASHBOARD_UI_PATH} module is allowed"
+                )
+            if content.strip():
+                raise AudienceBoundaryError(
+                    "external dashboard UI script cannot contain inline code"
+                )
+            module_count += 1
+            continue
+
+        is_refresh_metadata = (
+            set(attrs) == {"id", "type"}
+            and attrs.get("type", "").lower() == "application/json"
+            and attrs.get("id") == "refresh-metadata"
+        )
+        if not is_refresh_metadata:
+            if attrs.get("type", "").lower() in {
+                "",
+                "application/javascript",
+                "module",
+                "text/javascript",
+            }:
+                _validate_script_source(content, "inline script")
+            raise AudienceBoundaryError(
+                "executable inline script or redirect is not allowed; only refresh metadata JSON may be inline"
+            )
+        try:
+            payload = json.loads(content)
+        except json.JSONDecodeError as exc:
+            raise AudienceBoundaryError(
+                f"refresh metadata is not valid JSON: {exc}"
+            ) from exc
+        if not isinstance(payload, dict):
+            raise AudienceBoundaryError("refresh metadata must be a JSON object")
+        metadata_count += 1
+
+    if module_count != 1:
+        raise AudienceBoundaryError(
+            f"dashboard must load the pinned UI module exactly once; found {module_count}"
+        )
+    if metadata_count != 1:
+        raise AudienceBoundaryError(
+            f"dashboard must include valid refresh metadata exactly once; found {metadata_count}"
+        )
 
 
 def _validate_navigation(value, context, allowed_urls):
@@ -578,6 +705,7 @@ def validate_dashboard_html(html_text, data, asset_root=ROOT):
     """Validate active URLs and visible navigation in the generated dashboard."""
     allowed_urls = allowed_output_urls(data)
     parser = _parse_html(html_text)
+    _validate_dashboard_scripts(parser)
     inspected_scripts = set()
     for kind, value, context in parser.references:
         if kind == "resource":
@@ -613,6 +741,8 @@ def validate_email_payload(payload, data):
     allowed_urls = allowed_output_urls(data)
     html_body = str(payload.get("body_html") or "")
     parser = _parse_html(html_body)
+    if parser.scripts:
+        raise AudienceBoundaryError("email scripts are not allowed")
     for kind, value, context in parser.references:
         if kind == "resource":
             raise AudienceBoundaryError(f"email resource loading is not allowed in {context}: {value}")

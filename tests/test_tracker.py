@@ -172,6 +172,8 @@ hidden-mutations:
 <body>
   <a href="{self.DASHBOARD_URL}">PS5 and TV Deal Tracker</a>
   <a href="{first_product_url}">Current retailer product</a>
+  <script type="application/json" id="refresh-metadata">{{"state":"Fresh"}}</script>
+  <script type="module" src="assets/dashboard-ui.mjs"></script>
 </body>
 </html>"""
         payload = build_payload(data, self.DASHBOARD_URL)
@@ -688,12 +690,8 @@ hidden-mutations:
         self.assertIn("redirect", completed.stderr.lower())
 
     def test_audience_guard_reads_local_module_and_rejects_network_or_navigation_code(self):
-        from tools.audience_guard import AudienceBoundaryError, validate_dashboard_html
+        from tools.audience_guard import AudienceBoundaryError, _validate_script_source
 
-        data, html_text, _ = self._audience_fixture()
-        html_text = html_text.replace(
-            "</body>", '<script type="module" src="assets/test-ui.mjs"></script></body>'
-        )
         cases = {
             "absolute URL": 'const endpoint = "https://evil.example/data";',
             "dynamic import": 'import("./other.mjs");',
@@ -704,57 +702,31 @@ hidden-mutations:
             "navigation": 'window.location.assign("/other");',
         }
         for label, source in cases.items():
-            with self.subTest(case=label), tempfile.TemporaryDirectory() as tmp:
-                root = Path(tmp)
-                (root / "assets").mkdir()
-                (root / "assets" / "electronics-hero.png").write_bytes(b"fixture")
-                (root / "assets" / "test-ui.mjs").write_text(source, encoding="utf-8")
-                with self.assertRaises(AudienceBoundaryError):
-                    validate_dashboard_html(html_text, data, asset_root=root)
+            with self.subTest(case=label), self.assertRaises(AudienceBoundaryError):
+                _validate_script_source(source, "fixture.mjs")
 
     def test_audience_guard_ignores_import_words_inside_comments_and_strings(self):
-        from tools.audience_guard import validate_dashboard_html
+        from tools.audience_guard import _validate_script_source
 
-        data, html_text, _ = self._audience_fixture()
-        html_text = html_text.replace(
-            "</body>", '<script type="module" src="assets/test-ui.mjs"></script></body>'
-        )
         safe_source = """
 const message = 'import(\"./not-code.mjs\")';
 // import { notCode } from "./not-code.mjs";
 /* import ("./still-not-code.mjs"); */
 window.history.replaceState(null, "", "?view=details");
 """
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            (root / "assets").mkdir()
-            (root / "assets" / "electronics-hero.png").write_bytes(b"fixture")
-            (root / "assets" / "test-ui.mjs").write_text(safe_source, encoding="utf-8")
-            validate_dashboard_html(html_text, data, asset_root=root)
+        _validate_script_source(safe_source, "fixture.mjs")
 
     def test_audience_guard_allows_safe_history_replace_state_in_local_module(self):
-        from tools.audience_guard import validate_dashboard_html
+        from tools.audience_guard import _validate_script_source
 
-        data, html_text, _ = self._audience_fixture()
-        html_text = html_text.replace(
-            "</body>", '<script type="module" src="assets/test-ui.mjs"></script></body>'
+        _validate_script_source(
+            'window.history.replaceState(null, "", "?view=details");',
+            "fixture.mjs",
         )
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            (root / "assets").mkdir()
-            (root / "assets" / "electronics-hero.png").write_bytes(b"fixture")
-            (root / "assets" / "test-ui.mjs").write_text(
-                'window.history.replaceState(null, "", "?view=details");', encoding="utf-8"
-            )
-            validate_dashboard_html(html_text, data, asset_root=root)
 
     def test_audience_guard_rejects_aliases_computed_members_and_network_globals(self):
-        from tools.audience_guard import AudienceBoundaryError, validate_dashboard_html
+        from tools.audience_guard import AudienceBoundaryError, _validate_script_source
 
-        data, html_text, _ = self._audience_fixture()
-        html_text = html_text.replace(
-            "</body>", '<script type="module" src="assets/test-ui.mjs"></script></body>'
-        )
         cases = {
             "fetch alias": 'const request = fetch; request("/data.json");',
             "open alias": 'const launch = open; launch("/kegerator");',
@@ -772,40 +744,89 @@ window.history.replaceState(null, "", "?view=details");
             "location alias": 'const current = window.location;',
         }
         for label, source in cases.items():
-            with self.subTest(case=label), tempfile.TemporaryDirectory() as tmp:
-                root = Path(tmp)
-                (root / "assets").mkdir()
-                (root / "assets" / "electronics-hero.png").write_bytes(b"fixture")
-                (root / "assets" / "test-ui.mjs").write_text(source, encoding="utf-8")
-                with self.assertRaises(AudienceBoundaryError):
-                    validate_dashboard_html(html_text, data, asset_root=root)
+            with self.subTest(case=label), self.assertRaises(AudienceBoundaryError):
+                _validate_script_source(source, "fixture.mjs")
 
     def test_audience_guard_treats_regex_literal_text_as_non_executable(self):
-        from tools.audience_guard import validate_dashboard_html
+        from tools.audience_guard import _javascript_tokens, _validate_script_tokens
 
-        data, html_text, _ = self._audience_fixture()
-        html_text = html_text.replace(
-            "</body>", '<script type="module" src="assets/test-ui.mjs"></script></body>'
-        )
         source = r'''
 const importPattern = /import\s*\(/;
 const fetchPattern = /fetch\s*\(/;
-window.history.replaceState(null, "", "?view=details");
+if (true) {} /fetch/.test("fetch");
 '''
+        _validate_script_tokens(_javascript_tokens(source), "regex-fixture.mjs")
+
+    def test_script_semantics_reject_remaining_navigation_and_execution_bypasses(self):
+        from tools.audience_guard import (
+            AudienceBoundaryError,
+            _javascript_tokens,
+            _validate_script_tokens,
+        )
+
+        cases = {
+            "document computed location": 'document["location"] = "/kegerator";',
+            "parent computed navigation": 'parent["location"] = "/kegerator";',
+            "top computed navigation": 'top["location"] = "/kegerator";',
+            "shadowed query builder": 'const setViewQuery = () => "/kegerator"; window.history.replaceState(null, "", setViewQuery(window.location.search, selected) + window.location.hash);',
+            "image beacon": 'const pixel = new Image(); pixel.src = "/collect";',
+            "eval alias": 'const execute = eval; execute("2 + 2");',
+            "Function constructor": 'const execute = new Function("return 2 + 2");',
+        }
+        for label, source in cases.items():
+            with self.subTest(case=label), self.assertRaises(AudienceBoundaryError):
+                _validate_script_tokens(_javascript_tokens(source), "fixture.mjs")
+
+    def test_dashboard_guard_pins_the_only_allowed_local_ui_module(self):
+        from tools.audience_guard import AudienceBoundaryError, validate_dashboard_html
+
+        data, html_text, _ = self._audience_fixture()
+        source = Path("assets/dashboard-ui.mjs").read_bytes()
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "assets").mkdir()
             (root / "assets" / "electronics-hero.png").write_bytes(b"fixture")
-            (root / "assets" / "test-ui.mjs").write_text(source, encoding="utf-8")
+            module = root / "assets" / "dashboard-ui.mjs"
+            module.write_bytes(source)
             validate_dashboard_html(html_text, data, asset_root=root)
 
-    def test_audience_guard_rejects_cross_path_history_replace_state(self):
+            module.write_bytes(source + b"\n// mutation")
+            with self.assertRaises(AudienceBoundaryError):
+                validate_dashboard_html(html_text, data, asset_root=root)
+
+            module.write_bytes(source)
+            wrong_path = html_text.replace(
+                "assets/dashboard-ui.mjs", "assets/test-ui.mjs"
+            )
+            (root / "assets" / "test-ui.mjs").write_bytes(source)
+            with self.assertRaises(AudienceBoundaryError):
+                validate_dashboard_html(wrong_path, data, asset_root=root)
+
+    def test_dashboard_guard_allows_only_valid_refresh_json_inline(self):
         from tools.audience_guard import AudienceBoundaryError, validate_dashboard_html
 
-        data, html_text, _ = self._audience_fixture()
-        html_text = html_text.replace(
-            "</body>", '<script type="module" src="assets/test-ui.mjs"></script></body>'
+        data, base_html, _ = self._audience_fixture()
+        valid_metadata = '<script type="application/json" id="refresh-metadata">{"state":"Fresh"}</script>'
+        validate_dashboard_html(base_html, data)
+
+        invalid_cases = (
+            base_html.replace("</body>", '<script>eval("2 + 2")</script></body>'),
+            base_html.replace("</body>", '<script>const value = 2;</script></body>'),
+            base_html.replace(valid_metadata, '<script type="application/json" id="refresh-metadata">{not-json}</script>'),
+            base_html.replace("</body>", '<script type="application/json" id="other-data">{}</script></body>'),
+            base_html.replace(valid_metadata, ""),
+            base_html.replace(
+                '<script type="module" src="assets/dashboard-ui.mjs"></script>',
+                "",
+            ),
         )
+        for candidate in invalid_cases:
+            with self.subTest(candidate=candidate[:80]), self.assertRaises(AudienceBoundaryError):
+                validate_dashboard_html(candidate, data)
+
+    def test_audience_guard_rejects_cross_path_history_replace_state(self):
+        from tools.audience_guard import AudienceBoundaryError, _validate_script_source
+
         cases = (
             'window.history.replaceState(null, "", "/kegerator");',
             'window.history.replaceState(null, "", "/kegerator" + "?view=details");',
@@ -813,13 +834,8 @@ window.history.replaceState(null, "", "?view=details");
             'const setViewQuery = () => "/kegerator"; window.history.replaceState(null, "", setViewQuery() + window.location.hash);',
         )
         for source in cases:
-            with self.subTest(source=source), tempfile.TemporaryDirectory() as tmp:
-                root = Path(tmp)
-                (root / "assets").mkdir()
-                (root / "assets" / "electronics-hero.png").write_bytes(b"fixture")
-                (root / "assets" / "test-ui.mjs").write_text(source, encoding="utf-8")
-                with self.assertRaises(AudienceBoundaryError):
-                    validate_dashboard_html(html_text, data, asset_root=root)
+            with self.subTest(source=source), self.assertRaises(AudienceBoundaryError):
+                _validate_script_source(source, "fixture.mjs")
 
     def test_audience_guard_rejects_inline_event_handler_navigation(self):
         data, html_text, payload = self._audience_fixture()
