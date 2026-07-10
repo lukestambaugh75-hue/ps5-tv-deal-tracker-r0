@@ -19,6 +19,7 @@ exact retailer/product URLs in the current `data/deals.json`. Loaded page
 assets must be local files under `assets/`.
 
 Required run order:
+0. Before any pull or other action, run `/usr/bin/python3 tools/schedule_gate.py` and capture its exit code and output. Continue only on exit 0 plus output containing `SCHEDULE_GATE=RUN`. If the output contains `SCHEDULE_GATE=SKIP`, the exit is nonzero, or malformed output is returned, stop immediately with no pull, browsing, writes, commit, Pages action, or email.
 1. Run `git pull --ff-only`.
 2. Gather fresh live web or browser-visible evidence for the PS5 target and the 60-70 inch TV target, defaulting to a 65-inch mid-quality 4K smart TV. Prefer big-box retailers and Houston-area pickup/delivery paths. Check Best Buy, Walmart, Target, Costco, Sam's Club, Amazon, GameStop, Sony Direct, Home Depot, and any clearly Houston-area big-box purchase path that appears during the run.
 3. Write the fresh evidence packet to `out/browser-price-evidence.json`. Each source row must include `target_id`, `retailer`, `brand`, `model`, `product_name`, `price`, `url`, `stock_status`, `pickup_delivery`, `evidence_class`, `condition`, and `evidence_text`. TV rows must include `size_inches` when known. Valid evidence classes are `houston_visible_buy_path`, `big_box_public_price`, `member_only`, `cart_only`, `manufacturer_direct_reference`, `marketplace_seller`, `open_box_or_refurb`, `out_of_stock`, and `blocked_or_stale`.
@@ -38,8 +39,9 @@ Required run order:
 
 Do not purchase anything or contact sellers. Confirm final cart total, tax, pickup/delivery timing, and seller identity before buying."""
 status = "ACTIVE"
-rrule = "DTSTART;TZID=America/Chicago:20260702T060000\nRRULE:FREQ=DAILY;INTERVAL=2;BYHOUR=6;BYMINUTE=0;BYSECOND=0"
+rrule = "RRULE:FREQ=DAILY;BYHOUR=6;BYMINUTE=0;BYSECOND=0"
 model = "gpt-5.5"
 reasoning_effort = "high"
 execution_environment = "local"
+target = { type = "project", project_id = "9135bf61-1c2f-4c3f-8b44-5d82c4a665bf" }
 cwds = ["/Users/lukestambaugh/Documents/Files for GitHub/PS5 and TV Deal Tracker r0"]

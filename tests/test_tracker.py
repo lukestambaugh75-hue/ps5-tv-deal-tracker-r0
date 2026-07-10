@@ -7,7 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -248,6 +248,159 @@ hidden-mutations:
         self.assertEqual(
             format_central("2026-07-15T12:00:00Z"),
             "Jul 15, 2026 7:00 AM CDT",
+        )
+
+    def test_schedule_gate_runs_on_anchor_parity_and_scheduler_jitter(self):
+        from tools.schedule_gate import should_run
+
+        for allowed in (
+            datetime(2026, 7, 2, 11, 0, tzinfo=timezone.utc),
+            datetime(2026, 7, 4, 11, 0, tzinfo=timezone.utc),
+            datetime(2026, 7, 10, 11, 1, 57, tzinfo=timezone.utc),
+        ):
+            with self.subTest(now_utc=allowed):
+                self.assertTrue(should_run(allowed))
+
+        self.assertFalse(
+            should_run(datetime(2026, 7, 3, 11, 0, tzinfo=timezone.utc))
+        )
+
+    def test_schedule_gate_rejects_observed_one_am_run_and_handles_dst(self):
+        from tools.schedule_gate import should_run
+
+        self.assertFalse(
+            should_run(datetime(2026, 7, 10, 6, 0, 43, tzinfo=timezone.utc))
+        )
+        self.assertTrue(
+            should_run(datetime(2026, 11, 1, 12, 0, tzinfo=timezone.utc))
+        )
+        self.assertFalse(
+            should_run(datetime(2026, 11, 1, 11, 0, tzinfo=timezone.utc))
+        )
+
+    def test_schedule_gate_skips_before_anchor_and_outside_six_am_hour(self):
+        from tools.schedule_gate import should_run
+
+        for rejected in (
+            datetime(2026, 7, 1, 11, 0, tzinfo=timezone.utc),
+            datetime(2026, 7, 2, 10, 59, tzinfo=timezone.utc),
+            datetime(2026, 7, 2, 12, 0, tzinfo=timezone.utc),
+        ):
+            with self.subTest(now_utc=rejected):
+                self.assertFalse(should_run(rejected))
+
+    def test_schedule_gate_rejects_naive_or_non_utc_datetimes(self):
+        from tools.schedule_gate import should_run
+
+        with self.assertRaisesRegex(ValueError, "aware UTC"):
+            should_run(datetime(2026, 7, 2, 11, 0))
+
+        with self.assertRaisesRegex(ValueError, "aware UTC"):
+            should_run(
+                datetime(
+                    2026,
+                    7,
+                    2,
+                    6,
+                    0,
+                    tzinfo=timezone(timedelta(hours=-5)),
+                )
+            )
+
+    def test_schedule_gate_rejects_invalid_configuration(self):
+        from tools.schedule_gate import should_run
+
+        now = datetime(2026, 7, 2, 11, 0, tzinfo=timezone.utc)
+        invalid_settings = (
+            {"timezone_name": "Not/A_Timezone"},
+            {"local_hour": -1},
+            {"local_hour": 24},
+            {"local_hour": True},
+            {"interval_days": 0},
+            {"interval_days": -2},
+            {"interval_days": True},
+            {"anchor_date": datetime(2026, 7, 2, 0, 0)},
+        )
+        for settings in invalid_settings:
+            with self.subTest(settings=settings), self.assertRaises(ValueError):
+                should_run(now, **settings)
+
+    def _run_schedule_gate(self, now_utc):
+        return subprocess.run(
+            [sys.executable, "tools/schedule_gate.py", "--now-utc", now_utc],
+            cwd=Path(__file__).resolve().parents[1],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+    def test_schedule_gate_cli_reports_run_with_utc_local_and_reason(self):
+        completed = self._run_schedule_gate("2026-07-10T11:01:57Z")
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("SCHEDULE_GATE=RUN", completed.stdout)
+        self.assertIn("UTC=2026-07-10T11:01:57Z", completed.stdout)
+        self.assertIn("LOCAL=2026-07-10T06:01:57-05:00", completed.stdout)
+        self.assertIn("REASON=", completed.stdout)
+
+    def test_schedule_gate_cli_reports_skip_with_exit_three(self):
+        completed = self._run_schedule_gate("2026-07-03T11:00:00Z")
+
+        self.assertEqual(completed.returncode, 3, completed.stderr)
+        self.assertIn("SCHEDULE_GATE=SKIP", completed.stdout)
+        self.assertIn("UTC=2026-07-03T11:00:00Z", completed.stdout)
+        self.assertIn("LOCAL=2026-07-03T06:00:00-05:00", completed.stdout)
+        self.assertIn("REASON=", completed.stdout)
+
+    def test_schedule_gate_cli_invalid_input_exits_two_without_run_marker(self):
+        for invalid in ("not-a-timestamp", "2026-07-02T11:00:00"):
+            with self.subTest(now_utc=invalid):
+                completed = self._run_schedule_gate(invalid)
+                self.assertEqual(completed.returncode, 2)
+                self.assertNotIn("SCHEDULE_GATE=RUN", completed.stdout)
+                self.assertNotIn("SCHEDULE_GATE=RUN", completed.stderr)
+
+    def test_automation_mirror_uses_daily_local_candidate_and_fixed_project(self):
+        mirror = Path("automation/ps5-tv-deal-tracker-email.toml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn(
+            'rrule = "RRULE:FREQ=DAILY;BYHOUR=6;BYMINUTE=0;BYSECOND=0"',
+            mirror,
+        )
+        self.assertNotIn("DTSTART", mirror)
+        self.assertNotIn("INTERVAL=2", mirror)
+        self.assertIn('status = "ACTIVE"', mirror)
+        self.assertIn('model = "gpt-5.5"', mirror)
+        self.assertIn('reasoning_effort = "high"', mirror)
+        self.assertIn(
+            'target = { type = "project", project_id = "9135bf61-1c2f-4c3f-8b44-5d82c4a665bf" }',
+            mirror,
+        )
+
+    def test_automation_mirror_gates_before_pull_and_preserves_recipients(self):
+        mirror = Path("automation/ps5-tv-deal-tracker-email.toml").read_text(
+            encoding="utf-8"
+        )
+
+        gate_command = "/usr/bin/python3 tools/schedule_gate.py"
+        pull_command = "git pull --ff-only"
+        self.assertLess(mirror.index(gate_command), mirror.index(pull_command))
+        self.assertIn("exit 0", mirror)
+        self.assertIn("SCHEDULE_GATE=RUN", mirror)
+        self.assertIn("SCHEDULE_GATE=SKIP", mirror)
+        self.assertIn("malformed output", mirror)
+        self.assertIn("no pull, browsing, writes, commit, Pages action, or email", mirror)
+
+        email_addresses = set(
+            __import__("re").findall(
+                r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", mirror
+            )
+        )
+        self.assertEqual(
+            email_addresses,
+            {"lukestambaugh75@gmail.com", "devin.mullen89@gmail.com"},
         )
 
     def test_failed_attempt_without_prior_success_remains_unknown(self):
