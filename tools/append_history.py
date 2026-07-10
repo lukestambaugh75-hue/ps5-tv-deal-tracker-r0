@@ -7,32 +7,17 @@ import os
 from datetime import datetime, timezone
 
 try:
-    from .tracker_core import TARGET_IDS, best_rows_by_target
-    from .refresh_state import CENTRAL_ZONE, evaluate_refresh, utc_iso
+    from .tracker_core import best_rows_by_target, snapshot_is_represented
+    from .refresh_state import CENTRAL_ZONE, evaluate_refresh
 except ImportError:
-    from tracker_core import TARGET_IDS, best_rows_by_target
-    from refresh_state import CENTRAL_ZONE, evaluate_refresh, utc_iso
+    from tracker_core import best_rows_by_target, snapshot_is_represented
+    from refresh_state import CENTRAL_ZONE, evaluate_refresh
 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(ROOT, "data", "deals.json")
 HISTORY_PATH = os.path.join(ROOT, "history.csv")
 FIELDS = ["date", "target_id", "retailer", "product_name", "price", "evidence_class", "url"]
-
-
-def _snapshot_is_represented(data, best):
-    refresh = data.get("refresh") or {}
-    success_at = utc_iso(refresh.get("data_refreshed_at_utc"))
-    items = data.get("items") or []
-    if not success_at or set(best) != TARGET_IDS:
-        return False
-    if refresh.get("last_attempt_status") != "success":
-        return False
-    if int(refresh.get("row_count") or 0) != len(items):
-        return False
-    return bool(items) and all(
-        utc_iso(row.get("captured_at")) == success_at for row in items
-    )
 
 
 def build_history_rows(data, today=None, now=None):
@@ -44,7 +29,7 @@ def build_history_rows(data, today=None, now=None):
     if state["state"] not in {"Fresh", "Due"}:
         return []
     best = best_rows_by_target(data)
-    if not _snapshot_is_represented(data, best):
+    if not snapshot_is_represented(data):
         return []
     rows = []
     for target_id in sorted(best):

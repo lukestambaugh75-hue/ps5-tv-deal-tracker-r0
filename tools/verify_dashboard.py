@@ -19,8 +19,8 @@ EMAIL_PATH = os.path.join(ROOT, "out", "latest-email.json")
 PUBLIC_URL = "https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/"
 REQUIRED = [
     "PS5 and 65-inch TV Deal Tracker",
-    "Best Buy Today",
-    "Current Retailer Rows",
+    "Best row",
+    "Retailer Rows",
     "Price History",
     "Evidence Guardrails",
 ]

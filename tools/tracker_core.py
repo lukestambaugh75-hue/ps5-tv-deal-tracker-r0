@@ -8,12 +8,14 @@ try:
     from .refresh_state import (
         DEFAULT_CADENCE_MINUTES,
         DEFAULT_GRACE_MINUTES,
+        parse_utc,
         utc_iso,
     )
 except ImportError:
     from refresh_state import (
         DEFAULT_CADENCE_MINUTES,
         DEFAULT_GRACE_MINUTES,
+        parse_utc,
         utc_iso,
     )
 
@@ -43,6 +45,10 @@ PENALTY_BY_CLASS = {
     "out_of_stock": 10000,
     "blocked_or_stale": 10000,
 }
+
+
+class OutOfOrderEvidenceError(ValueError):
+    """Raised when a packet would move the last successful evidence backward."""
 
 
 def parse_timestamp(value):
@@ -201,6 +207,17 @@ def _quality_counts(sources):
     return dict(sorted(counts.items()))
 
 
+def _record_attempt_if_newer(refresh, status, reason, attempted_at):
+    attempted = parse_utc(utc_iso(attempted_at))
+    existing = parse_utc(refresh.get("last_attempt_at_utc"))
+    if existing is not None and attempted <= existing:
+        return False
+    refresh["last_attempt_at_utc"] = utc_iso(attempted)
+    refresh["last_attempt_status"] = status
+    refresh["last_attempt_reason"] = reason
+    return True
+
+
 def record_unsuccessful_attempt(data, status, reason, attempted_at=None):
     """Record an attempt without altering the last complete evidence snapshot."""
     if status not in {"blocked", "partial", "failed"}:
@@ -208,9 +225,12 @@ def record_unsuccessful_attempt(data, status, reason, attempted_at=None):
     attempted_at = attempted_at or datetime.now(timezone.utc)
     updated = copy.deepcopy(data)
     refresh = _refresh_metadata(updated)
-    refresh["last_attempt_at_utc"] = utc_iso(attempted_at)
-    refresh["last_attempt_status"] = status
-    refresh["last_attempt_reason"] = str(reason or "Refresh attempt did not complete.").strip()
+    _record_attempt_if_newer(
+        refresh,
+        status,
+        str(reason or "Refresh attempt did not complete.").strip(),
+        attempted_at,
+    )
     updated["refresh"] = refresh
     return updated
 
@@ -219,6 +239,18 @@ def apply_evidence(data, evidence, now=None):
     captured_at, sources = validate_evidence(evidence, now=now)
     attempted_at = now or datetime.now(timezone.utc)
     updated = copy.deepcopy(data)
+    refresh = _refresh_metadata(updated)
+    previous_success = parse_utc(refresh.get("data_refreshed_at_utc"))
+    if previous_success is not None and captured_at < previous_success:
+        raise OutOfOrderEvidenceError(
+            f"evidence captured_at {utc_iso(captured_at)} is older than stored success "
+            f"{utc_iso(previous_success)}"
+        )
+    if previous_success is not None and captured_at == previous_success:
+        _record_attempt_if_newer(refresh, "success", None, attempted_at)
+        updated["refresh"] = refresh
+        return updated
+
     updated["items"] = sorted(
         sources,
         key=lambda item: (item["target_id"], rank_score(item), item["retailer"]),
@@ -229,13 +261,9 @@ def apply_evidence(data, evidence, now=None):
     )
     updated["meta"]["blocker"] = None
 
-    refresh = _refresh_metadata(updated)
     refresh.update(
         {
             "data_refreshed_at_utc": utc_iso(captured_at),
-            "last_attempt_at_utc": utc_iso(attempted_at),
-            "last_attempt_status": "success",
-            "last_attempt_reason": None,
             "cadence_minutes": DEFAULT_CADENCE_MINUTES,
             "grace_minutes": DEFAULT_GRACE_MINUTES,
             "timezone": "America/Chicago",
@@ -245,6 +273,7 @@ def apply_evidence(data, evidence, now=None):
             "quality_counts": _quality_counts(sources),
         }
     )
+    _record_attempt_if_newer(refresh, "success", None, attempted_at)
     updated["refresh"] = refresh
 
     best = best_rows_by_target(updated)
@@ -281,6 +310,24 @@ def process_evidence_attempt(data, evidence, now=None):
         }
         status = "partial" if source_targets and source_targets != TARGET_IDS else "failed"
         return record_unsuccessful_attempt(data, status, str(exc), attempted_at), False
+
+
+def snapshot_is_represented(data):
+    """Return whether one complete success timestamp represents both targets."""
+    refresh = data.get("refresh") or {}
+    success_at = utc_iso(refresh.get("data_refreshed_at_utc"))
+    items = data.get("items") or []
+    if not success_at or not items:
+        return False
+    if int(refresh.get("row_count") or 0) != len(items):
+        return False
+    if int(refresh.get("source_count") or 0) != len(items):
+        return False
+    if {row.get("target_id") for row in items} != TARGET_IDS:
+        return False
+    if set(best_rows_by_target(data)) != TARGET_IDS:
+        return False
+    return all(utc_iso(row.get("captured_at")) == success_at for row in items)
 
 
 def rank_score(item):

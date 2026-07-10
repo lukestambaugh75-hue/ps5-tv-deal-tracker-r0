@@ -8,11 +8,11 @@ import re
 from datetime import datetime, timezone
 
 try:
-    from .tracker_core import best_rows_by_target, money
+    from .tracker_core import best_rows_by_target, money, snapshot_is_represented
     from .audience_guard import validate_email_payload
     from .refresh_state import evaluate_refresh, format_central, utc_iso
 except ImportError:
-    from tracker_core import best_rows_by_target, money
+    from tracker_core import best_rows_by_target, money, snapshot_is_represented
     from audience_guard import validate_email_payload
     from refresh_state import evaluate_refresh, format_central, utc_iso
 
@@ -54,6 +54,7 @@ def build_payload(data, dashboard_url=DEFAULT_DASHBOARD_URL, now=None):
     tv = best.get("tv")
     generated = utc_iso(now)
     status = state["state"]
+    actionable = status in {"Fresh", "Due"} and snapshot_is_represented(data)
     subject = f"PS5 + 65-inch TV deal tracker - {status}"
 
     success_text = state["data_refreshed_at_central"]
@@ -79,7 +80,7 @@ def build_payload(data, dashboard_url=DEFAULT_DASHBOARD_URL, now=None):
         f"<p><strong>State reason:</strong> {html.escape(_non_actionable_reason(reason))}</p>",
         f"<p>Dashboard: <a href='{html.escape(dashboard_url)}'>{html.escape(dashboard_url)}</a></p>",
     ]
-    if status in {"Fresh", "Due"}:
+    if actionable:
         lines[5:5] = [
             f"PS5 best row: {item_label(ps5)}",
             f"TV best row: {item_label(tv)}",

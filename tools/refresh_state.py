@@ -128,21 +128,23 @@ def evaluate_refresh(refresh, now=None):
         result["reason"] = "This tracker is archived and no longer refreshes."
         return result
 
-    if (
-        attempt_status not in {"success", "unknown"}
-        and attempt_at is not None
-        and (data_refreshed is None or attempt_at >= data_refreshed)
-    ):
-        result["state"] = "Blocked"
-        detail = attempt_reason or "The latest refresh attempt did not complete."
-        result["reason"] = f"Latest attempt {attempt_status}: {detail}"
-        return result
-
     if data_refreshed is None:
         return result
 
     if data_refreshed > now:
+        result["age_minutes"] = None
+        result["age_label"] = "Unknown"
         result["reason"] = "The recorded data refresh is in the future."
+        return result
+
+    if (
+        attempt_status not in {"success", "unknown"}
+        and attempt_at is not None
+        and attempt_at > data_refreshed
+    ):
+        result["state"] = "Blocked"
+        detail = attempt_reason or "The latest refresh attempt did not complete."
+        result["reason"] = f"Latest attempt {attempt_status}: {detail}"
         return result
 
     age_seconds = (now - data_refreshed).total_seconds()

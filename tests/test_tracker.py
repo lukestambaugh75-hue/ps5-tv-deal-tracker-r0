@@ -245,7 +245,7 @@ hidden-mutations:
             "Jul 15, 2026 7:00 AM CDT",
         )
 
-    def test_first_failed_attempt_is_blocked_instead_of_unknown(self):
+    def test_failed_attempt_without_prior_success_remains_unknown(self):
         from tools.refresh_state import evaluate_refresh
 
         now = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
@@ -262,8 +262,27 @@ hidden-mutations:
 
         state = evaluate_refresh(refresh, now=now)
 
-        self.assertEqual(state["state"], "Blocked")
-        self.assertIn("No source was reachable", state["reason"])
+        self.assertEqual(state["state"], "Unknown")
+        self.assertIn("No successful data refresh", state["reason"])
+
+    def test_unsuccessful_attempt_equal_to_success_time_does_not_block(self):
+        from tools.refresh_state import evaluate_refresh
+
+        now = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+        refresh = {
+            "data_refreshed_at_utc": "2026-07-01T12:00:00Z",
+            "last_attempt_at_utc": "2026-07-01T12:00:00Z",
+            "last_attempt_status": "failed",
+            "last_attempt_reason": "Equal-time failure record.",
+            "cadence_minutes": 2880,
+            "grace_minutes": 180,
+            "timezone": "America/Chicago",
+            "archived": False,
+        }
+
+        state = evaluate_refresh(refresh, now=now)
+
+        self.assertEqual(state["state"], "Fresh")
 
     def test_blocked_attempt_preserves_complete_truth_and_updates_attempt_only(self):
         from tools.tracker_core import apply_evidence, process_evidence_attempt
@@ -342,6 +361,58 @@ hidden-mutations:
         self.assertEqual(failed["refresh"]["last_attempt_status"], "failed")
         self.assertEqual(failed["refresh"]["last_attempt_at_utc"], "2026-07-01T13:00:00Z")
 
+    def test_older_complete_evidence_never_replaces_newer_success_values(self):
+        from tools.tracker_core import apply_evidence, process_evidence_attempt
+
+        now, evidence = self._fresh_evidence()
+        complete = apply_evidence(self._seed_data(), evidence, now=now)
+        older = json.loads(json.dumps(evidence))
+        older["captured_at"] = (now - timedelta(hours=1)).isoformat().replace(
+            "+00:00", "Z"
+        )
+        older["sources"][0]["price"] = 1.00
+        older["sources"][1]["price"] = 2.00
+
+        preserved, succeeded = process_evidence_attempt(
+            complete, older, now=now + timedelta(hours=1)
+        )
+
+        self.assertFalse(succeeded)
+        self.assertEqual(preserved["items"], complete["items"])
+        self.assertEqual(preserved["daily_brief"], complete["daily_brief"])
+        self.assertEqual(
+            preserved["refresh"]["data_refreshed_at_utc"],
+            complete["refresh"]["data_refreshed_at_utc"],
+        )
+        self.assertEqual(preserved["refresh"]["last_attempt_status"], "failed")
+        self.assertEqual(
+            preserved["refresh"]["last_attempt_at_utc"], "2026-07-01T13:00:00Z"
+        )
+        self.assertIn("older than", preserved["refresh"]["last_attempt_reason"])
+
+    def test_older_attempt_timestamp_never_overwrites_newer_attempt_fields(self):
+        from tools.tracker_core import apply_evidence, process_evidence_attempt
+
+        now, evidence = self._fresh_evidence()
+        complete = apply_evidence(self._seed_data(), evidence, now=now)
+        newest, _ = process_evidence_attempt(
+            complete,
+            {"status": "blocked", "reason": "Newer source challenge."},
+            now=now + timedelta(hours=2),
+        )
+        older = json.loads(json.dumps(evidence))
+        older["captured_at"] = (now - timedelta(hours=1)).isoformat().replace(
+            "+00:00", "Z"
+        )
+        older["sources"][0]["price"] = 1.00
+
+        preserved, succeeded = process_evidence_attempt(
+            newest, older, now=now + timedelta(hours=1)
+        )
+
+        self.assertFalse(succeeded)
+        self.assertEqual(preserved, newest)
+
     def test_history_skips_blocked_stale_and_unrepresented_snapshots(self):
         from tools.append_history import build_history_rows
         from tools.tracker_core import apply_evidence, process_evidence_attempt
@@ -395,6 +466,34 @@ hidden-mutations:
                 self.assertNotIn("best row", combined.lower())
                 self.assertNotIn("current best", combined.lower())
 
+    def test_fresh_email_suppresses_claims_when_snapshot_is_not_fully_represented(self):
+        from tools.build_email import build_payload
+        from tools.tracker_core import apply_evidence
+
+        now, evidence = self._fresh_evidence()
+        complete = apply_evidence(self._seed_data(), evidence, now=now)
+        missing_tv = json.loads(json.dumps(complete))
+        missing_tv["items"] = [
+            row for row in missing_tv["items"] if row["target_id"] == "ps5"
+        ]
+        missing_tv["refresh"]["row_count"] = len(missing_tv["items"])
+        missing_tv["refresh"]["source_count"] = len(missing_tv["items"])
+        mismatched_time = json.loads(json.dumps(complete))
+        mismatched_time["items"][0]["captured_at"] = "2026-07-01T11:59:00Z"
+
+        for label, data in (
+            ("missing target", missing_tv),
+            ("mismatched capture", mismatched_time),
+        ):
+            with self.subTest(case=label):
+                payload = build_payload(data, self.DASHBOARD_URL, now=now)
+                combined = payload["body_text"] + payload["body_html"]
+                self.assertEqual(payload["refresh_state"], "Fresh")
+                self.assertIn("Recommendations are withheld", payload["body_text"])
+                self.assertNotIn("$", combined)
+                for row in complete["items"]:
+                    self.assertNotIn(row["product_name"], combined)
+
     def test_dashboard_embeds_and_displays_refresh_metadata_with_inline_hydration(self):
         from tools.render_dashboard import render_dashboard
         from tools.tracker_core import apply_evidence
@@ -421,6 +520,42 @@ hidden-mutations:
         self.assertIn('<script type="application/json" id="refresh-metadata">', html_text)
         self.assertIn("data-refresh-hydration", html_text)
         self.assertIn('"state": "Fresh"', html_text)
+        self.assertIn("applyRecommendationState", html_text)
+
+    def test_future_success_stays_unknown_in_static_and_hydrated_state(self):
+        from tools.render_dashboard import render_dashboard
+        from tools.tracker_core import apply_evidence
+
+        success_at, evidence = self._fresh_evidence()
+        data = apply_evidence(self._seed_data(), evidence, now=success_at)
+        viewed_at = success_at - timedelta(hours=2)
+
+        html_text = render_dashboard(data, history_rows=[], now=viewed_at)
+
+        self.assertIn('id="refresh-status" class="state-badge unknown"', html_text)
+        self.assertIn('<dd id="refresh-age">Unknown</dd>', html_text)
+        self.assertIn('"state": "Unknown"', html_text)
+        self.assertIn("if (elapsed < 0)", html_text)
+        self.assertIn('applyState("Unknown"', html_text)
+
+    def test_stale_dashboard_labels_preserved_values_as_historical(self):
+        from tools.render_dashboard import render_dashboard
+        from tools.tracker_core import apply_evidence
+
+        now, evidence = self._fresh_evidence()
+        data = apply_evidence(self._seed_data(), evidence, now=now)
+        stale_at = now + timedelta(minutes=3060, seconds=1)
+
+        html_text = render_dashboard(data, history_rows=[], now=stale_at)
+
+        self.assertIn("Best row from last successful refresh", html_text)
+        self.assertIn("Stored Retailer Rows", html_text)
+        self.assertIn("not current", html_text)
+        self.assertIn('<body class="recommendations-historical">', html_text)
+        self.assertIn('class="best-card historical"', html_text)
+        self.assertNotIn(">Best Buy Today", html_text)
+        self.assertNotIn(">Current Retailer Rows<", html_text)
+        self.assertNotIn('class="chip good"', html_text)
 
     def test_checked_in_data_migrates_exact_july_8_success_without_literal_freshness(self):
         with open("data/deals.json", encoding="utf-8") as f:
@@ -698,7 +833,12 @@ hidden-mutations:
 
         now, evidence = self._fresh_evidence()
         data = apply_evidence(self._seed_data(), evidence, now=now)
-        html = render_dashboard(data, history_rows=[], dashboard_url=self.DASHBOARD_URL)
+        html = render_dashboard(
+            data,
+            history_rows=[],
+            dashboard_url=self.DASHBOARD_URL,
+            now=now,
+        )
 
         self.assertIn("Best Buy Today", html)
         self.assertIn("PS5", html)

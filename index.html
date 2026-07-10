@@ -56,6 +56,10 @@
     .chip { display: inline-flex; align-items: center; min-height: 24px; border-radius: 999px; padding: 3px 9px; font-size: .78rem; border: 1px solid var(--line); color: var(--muted); }
     .chip.good { color: #17351e; background: var(--green); border-color: var(--green); }
     .chip.warn { color: #2f1e00; background: var(--amber); border-color: var(--amber); }
+    .chip.historical { color: var(--muted); background: rgba(255,203,107,.1); border-color: var(--amber); }
+    .best-card.historical { border-color: rgba(255,203,107,.72); box-shadow: inset 0 3px 0 rgba(255,203,107,.32); }
+    .historical-warning { margin: 12px 0 18px; padding: 11px 13px; color: var(--amber); background: rgba(255,203,107,.08); border: 1px solid rgba(255,203,107,.45); border-radius: 6px; }
+    .historical-warning[hidden] { display: none; }
     dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0 0; }
     .fact-list { grid-template-columns: 1fr; gap: 8px; }
     .fact-list div { padding: 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 6px; background: rgba(255,255,255,.035); }
@@ -64,6 +68,7 @@
     table { width: 100%; border-collapse: collapse; font-size: .92rem; }
     th, td { text-align: left; padding: 11px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
     th { color: var(--green); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }
+    body.recommendations-historical [data-recommendation-label], body.recommendations-historical #price-ladder th { color: var(--amber); }
     .note { color: var(--muted); }
     .footer { color: var(--muted); font-size: .85rem; padding: 26px 0 40px; }
     @media (max-width: 760px) {
@@ -83,15 +88,15 @@
     }
   </style>
 </head>
-<body>
+<body class="recommendations-historical">
   <header class="hero">
     <div class="wrap hero-content">
       <span class="eyebrow">Electronics price tracker</span>
       <h1>PS5 and 65-inch TV Deal Tracker</h1>
-      <p class="lead"><span class="desktop-summary">PS5: Target $449.99 for PlayStation 5 Disc Astrobot Bundle. TV: Walmart $398 for Hisense 65 inch M7 Series Mini-LED QLED 4K UHD Google Smart TV.</span><span class="mobile-summary">PS5: Target $449.99. TV: Walmart $398.</span></p>
+      <p class="lead"><span class="desktop-summary" data-recommendation-summary data-fresh-text="PS5: Target $449.99 for PlayStation 5 Disc Astrobot Bundle. TV: Walmart $398 for Hisense 65 inch M7 Series Mini-LED QLED 4K UHD Google Smart TV." data-historical-text="Stored values from the last successful refresh are shown for history only. They are not current recommendations.">Stored values from the last successful refresh are shown for history only. They are not current recommendations.</span><span class="mobile-summary" data-recommendation-summary data-fresh-text="PS5: Target $449.99. TV: Walmart $398." data-historical-text="Stored values from the last successful refresh are shown for history only. They are not current recommendations.">Stored values from the last successful refresh are shown for history only. They are not current recommendations.</span></p>
       <div class="metrics">
         <div class="metric"><span class="eyebrow">Data state</span><strong>Stale</strong><small>Derived from the last successful source evidence</small></div>
-        <div class="metric"><span class="eyebrow">Tracked Rows</span><strong>16</strong><small>Current retailer evidence rows</small></div>
+        <div class="metric"><span class="eyebrow">Tracked Rows</span><strong>16</strong><small data-row-metric data-fresh-text="Current retailer evidence rows" data-historical-text="Stored retailer evidence rows">Stored retailer evidence rows</small></div>
         <div class="metric"><span class="eyebrow">Warnings</span><strong>5</strong><small>entry-tier TV, manufacturer-direct reference, marketplace seller, member-only price, out of stock</small></div>
       </div>
       <section
@@ -99,10 +104,13 @@
         aria-labelledby="refresh-heading"
         data-refresh-root
         data-success-at="2026-07-08T06:02:29Z"
+        data-attempt-at="2026-07-08T06:02:29Z"
         data-cadence-minutes="2880"
         data-grace-minutes="180"
         data-attempt-status="success"
+        data-state-reason="Data is older than the cadence and grace window."
         data-archived="false"
+        data-represented="true"
       >
         <div class="refresh-heading">
           <div>
@@ -120,7 +128,7 @@
           <div><dt>Evidence represented</dt><dd>16 rows from 16 sources</dd></div>
         </dl>
         <p class="refresh-reason"><strong>State reason:</strong> <span id="refresh-reason">Data is older than the cadence and grace window.</span></p>
-        <p class="secondary-time"><strong>Render / publish:</strong> rendered Jul 10, 2026 8:04 AM CDT; published Not recorded. These do not change the underlying data age.</p>
+        <p class="secondary-time"><strong>Render / publish:</strong> rendered Jul 10, 2026 8:17 AM CDT; published Not recorded. These do not change the underlying data age.</p>
       </section>
       <div class="panel color-index">
         <span class="eyebrow">Color index</span>
@@ -128,11 +136,11 @@
       </div>
       <div class="best-grid" id="best-buys">
         
-        <article class="best-card">
-          <span class="eyebrow">Best Buy Today - PS5</span>
+        <article class="best-card historical" data-recommendation-card>
+          <span class="eyebrow" data-recommendation-label data-fresh-text="Best Buy Today - PS5" data-historical-text="Best row from last successful refresh - PS5">Best row from last successful refresh - PS5</span>
           <h3>Target: $449.99</h3>
           <p><a href="https://www.target.com/c/playstation-5/-/N-hj96d">PlayStation 5 Disc Astrobot Bundle</a></p>
-          <div class="chips"><span class="chip good">clean buy path</span></div>
+          <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence">historical evidence</span></div>
           <dl class="fact-list">
             <div><dt>Availability</dt><dd>add-to-cart path visible in live result</dd></div>
             <div><dt>Pickup / delivery</dt><dd>Target live result exposed Add to cart; confirm Houston-area same-day delivery, pickup, or shipping before buying.</dd></div>
@@ -140,11 +148,11 @@
           </dl>
         </article>
         
-        <article class="best-card">
-          <span class="eyebrow">Best Buy Today - 65-inch TV</span>
+        <article class="best-card historical" data-recommendation-card>
+          <span class="eyebrow" data-recommendation-label data-fresh-text="Best Buy Today - 65-inch TV" data-historical-text="Best row from last successful refresh - 65-inch TV">Best row from last successful refresh - 65-inch TV</span>
           <h3>Walmart: $398</h3>
           <p><a href="https://www.walmart.com/browse/electronics/65-inch-tvs/3944_1060825_2489948_3421074">Hisense 65 inch M7 Series Mini-LED QLED 4K UHD Google Smart TV</a></p>
-          <div class="chips"><span class="chip good">clean buy path</span></div>
+          <div class="chips"><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence">historical evidence</span></div>
           <dl class="fact-list">
             <div><dt>Availability</dt><dd>available</dd></div>
             <div><dt>Pickup / delivery</dt><dd>Walmart result showed free shipping arriving today and free pickup as soon as 9am; confirm Houston-area store and delivery timing before buying.</dd></div>
@@ -158,7 +166,8 @@
     <section class="section" id="price-ladder">
       <div class="wrap panel">
         <span class="eyebrow">Price ladder</span>
-        <h2>Current Retailer Rows</h2>
+        <h2 data-retailer-heading data-fresh-text="Current Retailer Rows" data-historical-text="Stored Retailer Rows">Stored Retailer Rows</h2>
+        <p id="historical-warning" class="historical-warning">Stored prices and products are from the last successful refresh. They are not current recommendations.</p>
         <table>
           <thead><tr><th>Target</th><th>Retailer</th><th>Product</th><th>Price</th><th>Stock</th><th>Warnings</th></tr></thead>
           <tbody>
@@ -168,7 +177,7 @@
             <td><a href="https://www.target.com/c/playstation-5/-/N-hj96d">PlayStation 5 Disc Astrobot Bundle</a></td>
             <td>$449.99</td>
             <td>add-to-cart path visible in live result</td>
-            <td><span class="chip good">clean buy path</span></td>
+            <td><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence">historical evidence</span></td>
           </tr>
           <tr>
             <td>PS5</td>
@@ -176,7 +185,7 @@
             <td><a href="https://www.target.com/c/playstation-5/-/N-hj96d">PlayStation 5 Digital Console Slim NBA 2K25 Bundle</a></td>
             <td>$499.99</td>
             <td>add-to-cart path visible in live result</td>
-            <td><span class="chip good">clean buy path</span></td>
+            <td><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence">historical evidence</span></td>
           </tr>
           <tr>
             <td>PS5</td>
@@ -184,7 +193,7 @@
             <td><a href="https://www.walmart.com/browse/video-games/playstation-5-ps5-consoles/2636_5170403_3475115_2762884">PlayStation 5 Digital Console Slim - 825GB</a></td>
             <td>$569.99</td>
             <td>add-to-cart path visible in live result</td>
-            <td><span class="chip good">clean buy path</span></td>
+            <td><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence">historical evidence</span></td>
           </tr>
           <tr>
             <td>PS5</td>
@@ -192,7 +201,7 @@
             <td><a href="https://www.bestbuy.com/site/playstation-5/ps5-consoles/pcmcat1587395025973.c?id=pcmcat1587395025973">PlayStation 5 Slim Console Digital Edition</a></td>
             <td>$589</td>
             <td>add-to-cart path visible in live result</td>
-            <td><span class="chip good">clean buy path</span></td>
+            <td><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence">historical evidence</span></td>
           </tr>
           <tr>
             <td>PS5</td>
@@ -224,7 +233,7 @@
             <td><a href="https://www.walmart.com/browse/electronics/65-inch-tvs/3944_1060825_2489948_3421074">Hisense 65 inch M7 Series Mini-LED QLED 4K UHD Google Smart TV</a></td>
             <td>$398</td>
             <td>available</td>
-            <td><span class="chip good">clean buy path</span></td>
+            <td><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence">historical evidence</span></td>
           </tr>
           <tr>
             <td>TV</td>
@@ -232,7 +241,7 @@
             <td><a href="https://www.walmart.com/browse/electronics/65-inch-tvs/3944_1060825_2489948_3421074">VIZIO 65 Mini LED Quantum 4K QLED HDR Smart TV</a></td>
             <td>$398</td>
             <td>available</td>
-            <td><span class="chip good">clean buy path</span></td>
+            <td><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence">historical evidence</span></td>
           </tr>
           <tr>
             <td>TV</td>
@@ -248,7 +257,7 @@
             <td><a href="https://www.bestbuy.com/product/tcl-65-class-qm6k-series-4k-uhd-hdr-qd-mini-led-smart-tv-with-google-tv-2025/J36QYTQW5K">TCL 65 inch Class QM5K Series 4K UHD QD-Mini LED Smart TV with Google TV</a></td>
             <td>$449.99</td>
             <td>available in related model selector</td>
-            <td><span class="chip good">clean buy path</span></td>
+            <td><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence">historical evidence</span></td>
           </tr>
           <tr>
             <td>TV</td>
@@ -256,7 +265,7 @@
             <td><a href="https://www.bestbuy.com/product/tcl-65-class-qm6k-series-4k-uhd-hdr-qd-mini-led-smart-tv-with-google-tv-2025/J36QYTQW5K">TCL 65 inch Class QM6K Series 4K UHD HDR QD Mini LED Smart TV with Google TV</a></td>
             <td>$529.99</td>
             <td>available</td>
-            <td><span class="chip good">clean buy path</span></td>
+            <td><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence">historical evidence</span></td>
           </tr>
           <tr>
             <td>TV</td>
@@ -272,7 +281,7 @@
             <td><a href="https://www.homedepot.com/p/Samsung-65-Class-QLED-Q7F-4K-Samsung-Vision-AI-Smart-TV-2025-QN65Q7FAAFXZA/340501525">Samsung 65 inch Class QLED Q7F 4K Samsung Vision AI Smart TV</a></td>
             <td>$629.99</td>
             <td>add-to-cart path visible on product page</td>
-            <td><span class="chip good">clean buy path</span></td>
+            <td><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence">historical evidence</span></td>
           </tr>
           <tr>
             <td>TV</td>
@@ -280,7 +289,7 @@
             <td><a href="https://www.target.com/s/tcl%2Bqled">TCL 65 inch Class QM6K-Series 4K UHD HDR QD Mini LED Smart Google TV</a></td>
             <td>$799.99</td>
             <td>add-to-cart path visible in live result</td>
-            <td><span class="chip good">clean buy path</span></td>
+            <td><span class="chip historical" data-fresh-treatment data-fresh-text="clean buy path" data-historical-text="historical evidence">historical evidence</span></td>
           </tr>
           <tr>
             <td>TV</td>
@@ -324,12 +333,12 @@
   <footer class="wrap footer">Confirm final cart total, tax, pickup or delivery timing, and seller identity before buying.</footer>
   <script type="application/json" id="refresh-metadata">{
   "age_label": "2 days 7 hours",
-  "age_minutes": 3301,
+  "age_minutes": 3315,
   "archived": false,
   "cadence_minutes": 2880,
   "data_refreshed_at_central": "Jul 8, 2026 1:02 AM CDT",
   "data_refreshed_at_utc": "2026-07-08T06:02:29Z",
-  "evaluated_at_utc": "2026-07-10T13:04:04.850483Z",
+  "evaluated_at_utc": "2026-07-10T13:17:46.754870Z",
   "grace_minutes": 180,
   "last_attempt_at_central": "Jul 8, 2026 1:02 AM CDT",
   "last_attempt_at_utc": "2026-07-08T06:02:29Z",
@@ -348,8 +357,8 @@
     "out_of_stock": 1
   },
   "reason": "Data is older than the cadence and grace window.",
-  "rendered_at_central": "Jul 10, 2026 8:04 AM CDT",
-  "rendered_at_utc": "2026-07-10T13:04:04.850483Z",
+  "rendered_at_central": "Jul 10, 2026 8:17 AM CDT",
+  "rendered_at_utc": "2026-07-10T13:17:46.754870Z",
   "row_count": 16,
   "source_count": 16,
   "stale_after_at_central": "Jul 10, 2026 4:02 AM CDT",
@@ -365,14 +374,18 @@
       const ageNode = document.getElementById("refresh-age");
       const reasonNode = document.getElementById("refresh-reason");
       const successAt = Date.parse(root.dataset.successAt || "");
+      const attemptAt = Date.parse(root.dataset.attemptAt || "");
       const cadence = Number(root.dataset.cadenceMinutes || 0);
       const grace = Number(root.dataset.graceMinutes || 0);
       const attemptStatus = root.dataset.attemptStatus || "unknown";
       const archived = root.dataset.archived === "true";
+      const represented = root.dataset.represented === "true";
       const labels = {
         Fresh: "Data is within the 48-hour refresh cadence.",
         Due: "Data is due but remains inside the 3-hour grace window.",
-        Stale: "Data is older than the cadence and grace window."
+        Stale: "Data is older than the cadence and grace window.",
+        Unknown: "No successful data refresh is recorded.",
+        Archived: "This tracker is archived and no longer refreshes."
       };
       const ageLabel = (minutes) => {
         const days = Math.floor(minutes / 1440);
@@ -382,15 +395,51 @@
         if (hours) return `${hours} hour${hours === 1 ? "" : "s"}`;
         return `${mins} minute${mins === 1 ? "" : "s"}`;
       };
-      const update = () => {
-        if (!Number.isFinite(successAt) || archived || !["success", "unknown"].includes(attemptStatus)) return;
-        const elapsed = Math.max(0, Date.now() - successAt);
-        const age = Math.floor(elapsed / 60000);
-        const state = elapsed <= cadence * 60000 ? "Fresh" : elapsed <= (cadence + grace) * 60000 ? "Due" : "Stale";
+      const applyRecommendationState = (state) => {
+        const actionable = represented && ["Fresh", "Due"].includes(state);
+        document.body.classList.toggle("recommendations-historical", !actionable);
+        document.querySelectorAll("[data-recommendation-label], [data-recommendation-summary], [data-retailer-heading], [data-row-metric]").forEach((node) => {
+          node.textContent = actionable ? node.dataset.freshText : node.dataset.historicalText;
+        });
+        document.querySelectorAll("[data-recommendation-card]").forEach((card) => {
+          card.classList.toggle("historical", !actionable);
+        });
+        document.querySelectorAll("[data-fresh-treatment]").forEach((chip) => {
+          chip.classList.toggle("good", actionable);
+          chip.classList.toggle("historical", !actionable);
+          chip.textContent = actionable ? chip.dataset.freshText : chip.dataset.historicalText;
+        });
+        const warning = document.getElementById("historical-warning");
+        if (warning) warning.hidden = actionable;
+      };
+      const applyState = (state, reason, age) => {
         stateNode.textContent = state;
         stateNode.className = `state-badge ${state.toLowerCase()}`;
-        ageNode.textContent = ageLabel(age);
-        reasonNode.textContent = labels[state];
+        ageNode.textContent = age;
+        reasonNode.textContent = reason;
+        applyRecommendationState(state);
+      };
+      const update = () => {
+        if (archived) {
+          applyState("Archived", labels.Archived, ageNode.textContent);
+          return;
+        }
+        if (!Number.isFinite(successAt)) {
+          applyState("Unknown", labels.Unknown, "Unknown");
+          return;
+        }
+        const elapsed = Date.now() - successAt;
+        if (elapsed < 0) {
+          applyState("Unknown", "The recorded data refresh is in the future.", "Unknown");
+          return;
+        }
+        const age = Math.floor(elapsed / 60000);
+        if (!["success", "unknown"].includes(attemptStatus) && Number.isFinite(attemptAt) && attemptAt > successAt) {
+          applyState("Blocked", root.dataset.stateReason, ageLabel(age));
+          return;
+        }
+        const state = elapsed <= cadence * 60000 ? "Fresh" : elapsed <= (cadence + grace) * 60000 ? "Due" : "Stale";
+        applyState(state, labels[state], ageLabel(age));
       };
       update();
       window.setInterval(update, 60000);

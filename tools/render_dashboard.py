@@ -7,10 +7,10 @@ import os
 from datetime import datetime, timezone
 
 try:
-    from .tracker_core import best_rows_by_target, money
+    from .tracker_core import best_rows_by_target, money, snapshot_is_represented
     from .refresh_state import evaluate_refresh, format_central, utc_iso
 except ImportError:
-    from tracker_core import best_rows_by_target, money
+    from tracker_core import best_rows_by_target, money, snapshot_is_represented
     from refresh_state import evaluate_refresh, format_central, utc_iso
 
 
@@ -32,10 +32,16 @@ def read_history(path=HISTORY_PATH):
         return list(csv.DictReader(f))
 
 
-def render_warning_chips(item):
+def render_warning_chips(item, actionable=True):
     warnings = item.get("warnings") or []
     if not warnings:
-        return '<span class="chip good">clean buy path</span>'
+        current_class = "good" if actionable else "historical"
+        current_text = "clean buy path" if actionable else "historical evidence"
+        return (
+            f'<span class="chip {current_class}" data-fresh-treatment '
+            f'data-fresh-text="clean buy path" data-historical-text="historical evidence">'
+            f"{current_text}</span>"
+        )
     return "".join(f'<span class="chip warn">{esc(warning)}</span>' for warning in warnings)
 
 
@@ -50,22 +56,25 @@ def readable_evidence(value):
     return labels.get(value, str(value).replace("_", " "))
 
 
-def render_best_card(target_id, label, best):
+def render_best_card(target_id, label, best, actionable=True):
     row = best.get(target_id)
+    fresh_label = f"Best Buy Today - {label}"
+    historical_label = f"Best row from last successful refresh - {label}"
+    visible_label = fresh_label if actionable else historical_label
     if not row:
         return f"""
-        <article class="best-card blocked">
-          <span class="eyebrow">{esc(label)}</span>
-          <h3>No current buy path</h3>
-          <p>Fresh evidence did not produce an available row for this target.</p>
+        <article class="best-card blocked{' historical' if not actionable else ''}" data-recommendation-card>
+          <span class="eyebrow" data-recommendation-label data-fresh-text="{esc(fresh_label)}" data-historical-text="{esc(historical_label)}">{esc(visible_label)}</span>
+          <h3>No represented row</h3>
+          <p>The complete snapshot does not contain an available row for this target.</p>
         </article>"""
     product = row.get("product_name") or row.get("model")
     return f"""
-        <article class="best-card">
-          <span class="eyebrow">{esc(label)}</span>
+        <article class="best-card{' historical' if not actionable else ''}" data-recommendation-card>
+          <span class="eyebrow" data-recommendation-label data-fresh-text="{esc(fresh_label)}" data-historical-text="{esc(historical_label)}">{esc(visible_label)}</span>
           <h3>{esc(row.get("retailer"))}: {esc(money(row.get("price")))}</h3>
           <p><a href="{esc(row.get("url"))}">{esc(product)}</a></p>
-          <div class="chips">{render_warning_chips(row)}</div>
+          <div class="chips">{render_warning_chips(row, actionable=actionable)}</div>
           <dl class="fact-list">
             <div><dt>Availability</dt><dd>{esc(row.get("stock_status") or "check retailer")}</dd></div>
             <div><dt>Pickup / delivery</dt><dd>{esc(row.get("pickup_delivery") or "check retailer")}</dd></div>
@@ -74,7 +83,7 @@ def render_best_card(target_id, label, best):
         </article>"""
 
 
-def render_item_row(item):
+def render_item_row(item, actionable=True):
     product = item.get("product_name") or item.get("model")
     return f"""
           <tr>
@@ -83,7 +92,7 @@ def render_item_row(item):
             <td><a href="{esc(item.get("url"))}">{esc(product)}</a></td>
             <td>{esc(money(item.get("price")))}</td>
             <td>{esc(item.get("stock_status") or "-")}</td>
-            <td>{render_warning_chips(item)}</td>
+            <td>{render_warning_chips(item, actionable=actionable)}</td>
           </tr>"""
 
 
@@ -125,6 +134,16 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     mobile_summary = compact_best_summary(best)
     refresh = evaluate_refresh(data.get("refresh"), now=now)
     status = refresh["state"]
+    represented = snapshot_is_represented(data)
+    actionable = status in {"Fresh", "Due"} and represented
+    historical_summary = (
+        "Stored values from the last successful refresh are shown for history only. "
+        "They are not current recommendations."
+    )
+    visible_summary = summary if actionable else historical_summary
+    visible_mobile_summary = mobile_summary if actionable else historical_summary
+    row_heading = "Current Retailer Rows" if actionable else "Stored Retailer Rows"
+    row_metric = "Current retailer evidence rows" if actionable else "Stored retailer evidence rows"
     warnings = data.get("daily_brief", {}).get("warnings", [])
     rendered_at = utc_iso(now)
     published_at = data.get("refresh", {}).get("published_at_utc")
@@ -195,6 +214,10 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     .chip {{ display: inline-flex; align-items: center; min-height: 24px; border-radius: 999px; padding: 3px 9px; font-size: .78rem; border: 1px solid var(--line); color: var(--muted); }}
     .chip.good {{ color: #17351e; background: var(--green); border-color: var(--green); }}
     .chip.warn {{ color: #2f1e00; background: var(--amber); border-color: var(--amber); }}
+    .chip.historical {{ color: var(--muted); background: rgba(255,203,107,.1); border-color: var(--amber); }}
+    .best-card.historical {{ border-color: rgba(255,203,107,.72); box-shadow: inset 0 3px 0 rgba(255,203,107,.32); }}
+    .historical-warning {{ margin: 12px 0 18px; padding: 11px 13px; color: var(--amber); background: rgba(255,203,107,.08); border: 1px solid rgba(255,203,107,.45); border-radius: 6px; }}
+    .historical-warning[hidden] {{ display: none; }}
     dl {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0 0; }}
     .fact-list {{ grid-template-columns: 1fr; gap: 8px; }}
     .fact-list div {{ padding: 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 6px; background: rgba(255,255,255,.035); }}
@@ -203,6 +226,7 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     table {{ width: 100%; border-collapse: collapse; font-size: .92rem; }}
     th, td {{ text-align: left; padding: 11px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }}
     th {{ color: var(--green); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }}
+    body.recommendations-historical [data-recommendation-label], body.recommendations-historical #price-ladder th {{ color: var(--amber); }}
     .note {{ color: var(--muted); }}
     .footer {{ color: var(--muted); font-size: .85rem; padding: 26px 0 40px; }}
     @media (max-width: 760px) {{
@@ -222,15 +246,15 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     }}
   </style>
 </head>
-<body>
+<body{' class="recommendations-historical"' if not actionable else ''}>
   <header class="hero">
     <div class="wrap hero-content">
       <span class="eyebrow">Electronics price tracker</span>
       <h1>PS5 and 65-inch TV Deal Tracker</h1>
-      <p class="lead"><span class="desktop-summary">{esc(summary)}</span><span class="mobile-summary">{esc(mobile_summary)}</span></p>
+      <p class="lead"><span class="desktop-summary" data-recommendation-summary data-fresh-text="{esc(summary)}" data-historical-text="{esc(historical_summary)}">{esc(visible_summary)}</span><span class="mobile-summary" data-recommendation-summary data-fresh-text="{esc(mobile_summary)}" data-historical-text="{esc(historical_summary)}">{esc(visible_mobile_summary)}</span></p>
       <div class="metrics">
         <div class="metric"><span class="eyebrow">Data state</span><strong>{esc(status)}</strong><small>Derived from the last successful source evidence</small></div>
-        <div class="metric"><span class="eyebrow">Tracked Rows</span><strong>{len(items)}</strong><small>Current retailer evidence rows</small></div>
+        <div class="metric"><span class="eyebrow">Tracked Rows</span><strong>{len(items)}</strong><small data-row-metric data-fresh-text="Current retailer evidence rows" data-historical-text="Stored retailer evidence rows">{esc(row_metric)}</small></div>
         <div class="metric"><span class="eyebrow">Warnings</span><strong>{len(warnings)}</strong><small>{esc(", ".join(warnings) if warnings else "No warning chips")}</small></div>
       </div>
       <section
@@ -238,10 +262,13 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
         aria-labelledby="refresh-heading"
         data-refresh-root
         data-success-at="{esc(refresh['data_refreshed_at_utc'])}"
+        data-attempt-at="{esc(refresh['last_attempt_at_utc'])}"
         data-cadence-minutes="{refresh['cadence_minutes']}"
         data-grace-minutes="{refresh['grace_minutes']}"
         data-attempt-status="{esc(refresh['last_attempt_status'])}"
+        data-state-reason="{esc(refresh['reason'])}"
         data-archived="{str(refresh['archived']).lower()}"
+        data-represented="{str(represented).lower()}"
       >
         <div class="refresh-heading">
           <div>
@@ -266,8 +293,8 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
         <p class="note"><strong>Green</strong> = recommended or ready to act. <strong>Blue</strong> = information only, like links, charts, totals, or neutral controls; it is not a recommendation. <strong>Amber</strong> = caution; check details before acting. <strong>Red</strong> = blocked or stop; do not act until fixed.</p>
       </div>
       <div class="best-grid" id="best-buys">
-        {render_best_card("ps5", "Best Buy Today - PS5", best)}
-        {render_best_card("tv", "Best Buy Today - 65-inch TV", best)}
+        {render_best_card("ps5", "PS5", best, actionable=actionable)}
+        {render_best_card("tv", "65-inch TV", best, actionable=actionable)}
       </div>
     </div>
   </header>
@@ -275,10 +302,11 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
     <section class="section" id="price-ladder">
       <div class="wrap panel">
         <span class="eyebrow">Price ladder</span>
-        <h2>Current Retailer Rows</h2>
+        <h2 data-retailer-heading data-fresh-text="Current Retailer Rows" data-historical-text="Stored Retailer Rows">{esc(row_heading)}</h2>
+        <p id="historical-warning" class="historical-warning"{' hidden' if actionable else ''}>Stored prices and products are from the last successful refresh. They are not current recommendations.</p>
         <table>
           <thead><tr><th>Target</th><th>Retailer</th><th>Product</th><th>Price</th><th>Stock</th><th>Warnings</th></tr></thead>
-          <tbody>{''.join(render_item_row(item) for item in items) or '<tr><td colspan="6">Fresh evidence pending.</td></tr>'}</tbody>
+          <tbody>{''.join(render_item_row(item, actionable=actionable) for item in items) or '<tr><td colspan="6">Evidence pending.</td></tr>'}</tbody>
         </table>
       </div>
     </section>
@@ -311,14 +339,18 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
       const ageNode = document.getElementById("refresh-age");
       const reasonNode = document.getElementById("refresh-reason");
       const successAt = Date.parse(root.dataset.successAt || "");
+      const attemptAt = Date.parse(root.dataset.attemptAt || "");
       const cadence = Number(root.dataset.cadenceMinutes || 0);
       const grace = Number(root.dataset.graceMinutes || 0);
       const attemptStatus = root.dataset.attemptStatus || "unknown";
       const archived = root.dataset.archived === "true";
+      const represented = root.dataset.represented === "true";
       const labels = {{
         Fresh: "Data is within the 48-hour refresh cadence.",
         Due: "Data is due but remains inside the 3-hour grace window.",
-        Stale: "Data is older than the cadence and grace window."
+        Stale: "Data is older than the cadence and grace window.",
+        Unknown: "No successful data refresh is recorded.",
+        Archived: "This tracker is archived and no longer refreshes."
       }};
       const ageLabel = (minutes) => {{
         const days = Math.floor(minutes / 1440);
@@ -328,15 +360,51 @@ def render_dashboard(data, history_rows=None, dashboard_url=DEFAULT_DASHBOARD_UR
         if (hours) return `${{hours}} hour${{hours === 1 ? "" : "s"}}`;
         return `${{mins}} minute${{mins === 1 ? "" : "s"}}`;
       }};
-      const update = () => {{
-        if (!Number.isFinite(successAt) || archived || !["success", "unknown"].includes(attemptStatus)) return;
-        const elapsed = Math.max(0, Date.now() - successAt);
-        const age = Math.floor(elapsed / 60000);
-        const state = elapsed <= cadence * 60000 ? "Fresh" : elapsed <= (cadence + grace) * 60000 ? "Due" : "Stale";
+      const applyRecommendationState = (state) => {{
+        const actionable = represented && ["Fresh", "Due"].includes(state);
+        document.body.classList.toggle("recommendations-historical", !actionable);
+        document.querySelectorAll("[data-recommendation-label], [data-recommendation-summary], [data-retailer-heading], [data-row-metric]").forEach((node) => {{
+          node.textContent = actionable ? node.dataset.freshText : node.dataset.historicalText;
+        }});
+        document.querySelectorAll("[data-recommendation-card]").forEach((card) => {{
+          card.classList.toggle("historical", !actionable);
+        }});
+        document.querySelectorAll("[data-fresh-treatment]").forEach((chip) => {{
+          chip.classList.toggle("good", actionable);
+          chip.classList.toggle("historical", !actionable);
+          chip.textContent = actionable ? chip.dataset.freshText : chip.dataset.historicalText;
+        }});
+        const warning = document.getElementById("historical-warning");
+        if (warning) warning.hidden = actionable;
+      }};
+      const applyState = (state, reason, age) => {{
         stateNode.textContent = state;
         stateNode.className = `state-badge ${{state.toLowerCase()}}`;
-        ageNode.textContent = ageLabel(age);
-        reasonNode.textContent = labels[state];
+        ageNode.textContent = age;
+        reasonNode.textContent = reason;
+        applyRecommendationState(state);
+      }};
+      const update = () => {{
+        if (archived) {{
+          applyState("Archived", labels.Archived, ageNode.textContent);
+          return;
+        }}
+        if (!Number.isFinite(successAt)) {{
+          applyState("Unknown", labels.Unknown, "Unknown");
+          return;
+        }}
+        const elapsed = Date.now() - successAt;
+        if (elapsed < 0) {{
+          applyState("Unknown", "The recorded data refresh is in the future.", "Unknown");
+          return;
+        }}
+        const age = Math.floor(elapsed / 60000);
+        if (!["success", "unknown"].includes(attemptStatus) && Number.isFinite(attemptAt) && attemptAt > successAt) {{
+          applyState("Blocked", root.dataset.stateReason, ageLabel(age));
+          return;
+        }}
+        const state = elapsed <= cadence * 60000 ? "Fresh" : elapsed <= (cadence + grace) * 60000 ? "Due" : "Stale";
+        applyState(state, labels[state], ageLabel(age));
       }};
       update();
       window.setInterval(update, 60000);
