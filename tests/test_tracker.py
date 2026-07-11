@@ -250,7 +250,7 @@ hidden-mutations:
             "Jul 15, 2026 7:00 AM CDT",
         )
 
-    def test_schedule_gate_runs_on_anchor_parity_and_scheduler_jitter(self):
+    def test_schedule_gate_runs_every_day_and_scheduler_jitter(self):
         from tools.schedule_gate import should_run
 
         for allowed in (
@@ -261,7 +261,7 @@ hidden-mutations:
             with self.subTest(now_utc=allowed):
                 self.assertTrue(should_run(allowed))
 
-        self.assertFalse(
+        self.assertTrue(
             should_run(datetime(2026, 7, 3, 11, 0, tzinfo=timezone.utc))
         )
 
@@ -343,11 +343,11 @@ hidden-mutations:
         self.assertIn("LOCAL=2026-07-10T06:01:57-05:00", completed.stdout)
         self.assertIn("REASON=", completed.stdout)
 
-    def test_schedule_gate_cli_reports_skip_with_exit_three(self):
+    def test_schedule_gate_cli_reports_run_on_the_next_day(self):
         completed = self._run_schedule_gate("2026-07-03T11:00:00Z")
 
-        self.assertEqual(completed.returncode, 3, completed.stderr)
-        self.assertIn("SCHEDULE_GATE=SKIP", completed.stdout)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("SCHEDULE_GATE=RUN", completed.stdout)
         self.assertIn("UTC=2026-07-03T11:00:00Z", completed.stdout)
         self.assertIn("LOCAL=2026-07-03T06:00:00-05:00", completed.stdout)
         self.assertIn("REASON=", completed.stdout)

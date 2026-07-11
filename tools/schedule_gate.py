@@ -49,7 +49,7 @@ def _decision(
     timezone_name="America/Chicago",
     anchor_date=DEFAULT_ANCHOR_DATE,
     local_hour=6,
-    interval_days=2,
+    interval_days=1,
 ):
     normalized_utc = _validated_utc(now_utc)
     local_zone = _validated_settings(
@@ -72,13 +72,13 @@ def _decision(
             False,
             normalized_utc,
             local_now,
-            f"local date is off the {interval_days}-day anchor parity",
+        f"local date is off the {interval_days}-day schedule interval",
         )
     return (
         True,
         normalized_utc,
         local_now,
-        f"local date matches the {interval_days}-day anchor parity in the {local_hour} AM hour",
+        f"local date matches the {interval_days}-day schedule interval in the {local_hour} AM hour",
     )
 
 
@@ -88,7 +88,7 @@ def should_run(
     timezone_name="America/Chicago",
     anchor_date=DEFAULT_ANCHOR_DATE,
     local_hour=6,
-    interval_days=2,
+    interval_days=1,
 ):
     """Return whether an aware UTC instant is an allowed local schedule run."""
 
@@ -117,7 +117,7 @@ def _format_utc(value):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="Gate the PS5/TV automation by Central hour and two-day parity."
+        description="Gate the PS5/TV automation by Central hour and daily schedule."
     )
     parser.add_argument(
         "--now-utc",
