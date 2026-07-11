@@ -739,12 +739,25 @@ def validate_email_payload(payload, data):
         )
 
     allowed_urls = allowed_output_urls(data)
+    # Inline chart PNGs ride along as Content-ID attachments (never fetched over the
+    # network) and are already checked by payload_schema: every cid: reference in the
+    # HTML must match a supplied inline_images entry, and every supplied image must be
+    # referenced. That is a closed, locally-supplied set, so it is not a "resource
+    # loading" boundary violation the way an external <img src="https://..."> would be.
+    inline_cids = {
+        str(img.get("cid") or "").strip()
+        for img in payload.get("inline_images") or []
+        if isinstance(img, dict) and img.get("cid")
+    }
     html_body = str(payload.get("body_html") or "")
     parser = _parse_html(html_body)
     if parser.scripts:
         raise AudienceBoundaryError("email scripts are not allowed")
     for kind, value, context in parser.references:
         if kind == "resource":
+            cid = value[len("cid:"):] if value.startswith("cid:") else None
+            if cid and cid in inline_cids:
+                continue
             raise AudienceBoundaryError(f"email resource loading is not allowed in {context}: {value}")
         _validate_navigation(value, f"email {context}", allowed_urls)
     _validate_visible_navigation(parser)

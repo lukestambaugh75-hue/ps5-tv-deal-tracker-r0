@@ -1099,6 +1099,37 @@ if (true) {} /fetch/.test("fetch");
         self.assertIn("audience boundary violation", completed.stderr)
         self.assertIn("recipients", completed.stderr.lower())
 
+    def test_audience_guard_allows_a_cid_inline_chart_declared_in_inline_images(self):
+        data, html_text, payload = self._audience_fixture()
+        payload["body_html"] += '\n<img src="cid:priceTrend" alt="Price trend">'
+        payload["inline_images"] = [{"cid": "priceTrend", "path": "chart-price.png"}]
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("audience boundary passed", completed.stdout)
+
+    def test_audience_guard_rejects_external_image_src_even_when_inline_images_present(self):
+        data, html_text, payload = self._audience_fixture()
+        payload["body_html"] += '\n<img src="https://evil.example/track.png" alt="tracker">'
+        payload["inline_images"] = [{"cid": "priceTrend", "path": "chart-price.png"}]
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("audience boundary violation", completed.stderr)
+        self.assertIn("evil.example", completed.stderr)
+
+    def test_audience_guard_rejects_a_cid_reference_with_no_matching_inline_image(self):
+        data, html_text, payload = self._audience_fixture()
+        payload["body_html"] += '\n<img src="cid:unknownChart" alt="chart">'
+
+        completed = self._run_guard(html_text, data, payload)
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("audience boundary violation", completed.stderr)
+        self.assertIn("resource loading is not allowed", completed.stderr)
+
     def test_local_dashboard_verifier_runs_the_generated_output_guard(self):
         from tools.render_dashboard import render_dashboard
 
