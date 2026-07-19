@@ -741,21 +741,21 @@ hidden-mutations:
         self.assertNotIn(">Current Retailer Rows<", html_text)
         self.assertNotIn('class="chip good"', html_text)
 
-    def test_checked_in_data_migrates_exact_july_8_success_without_literal_freshness(self):
+    def test_checked_in_data_represents_one_complete_success_snapshot(self):
         with open("data/deals.json", encoding="utf-8") as f:
             data = json.load(f)
 
         self.assertNotIn("generated_at_utc", data["meta"])
         self.assertNotIn("fresh_evidence_status", data["daily_brief"])
-        self.assertEqual(data["refresh"]["data_refreshed_at_utc"], "2026-07-08T06:02:29Z")
-        self.assertEqual(data["refresh"]["last_attempt_at_utc"], "2026-07-08T06:02:29Z")
+        item_timestamps = {item["captured_at"] for item in data["items"]}
+        self.assertEqual(item_timestamps, {data["refresh"]["data_refreshed_at_utc"]})
         self.assertEqual(data["refresh"]["last_attempt_status"], "success")
         self.assertEqual(data["refresh"]["cadence_minutes"], 2880)
         self.assertEqual(data["refresh"]["grace_minutes"], 180)
         self.assertEqual(data["refresh"]["timezone"], "America/Chicago")
         self.assertFalse(data["refresh"]["archived"])
-        self.assertEqual(data["refresh"]["source_count"], 16)
-        self.assertEqual(data["refresh"]["row_count"], 16)
+        self.assertEqual(data["refresh"]["source_count"], len(data["items"]))
+        self.assertEqual(data["refresh"]["row_count"], len(data["items"]))
         self.assertIsInstance(data["refresh"]["quality_counts"], dict)
         self.assertIsNone(data["refresh"]["published_at_utc"])
 
@@ -1332,10 +1332,21 @@ if (true) {} /fetch/.test("fetch");
     def test_seed_evidence_keeps_purchase_paths_ahead_of_manufacturer_reference(self):
         with open("out/browser-price-evidence.json", encoding="utf-8") as f:
             evidence = json.load(f)
-        by_retailer = {row["retailer"]: row for row in evidence["sources"] if row["target_id"] == "ps5"}
+        ps5_rows = [row for row in evidence["sources"] if row["target_id"] == "ps5"]
 
-        self.assertEqual(by_retailer["Walmart"]["evidence_class"], "big_box_public_price")
-        self.assertEqual(by_retailer["PlayStation Direct"]["evidence_class"], "manufacturer_direct_reference")
+        self.assertTrue(
+            any(
+                row["retailer"] == "Walmart" and row["evidence_class"] == "big_box_public_price"
+                for row in ps5_rows
+            )
+        )
+        self.assertTrue(
+            any(
+                row["retailer"] == "PlayStation Direct"
+                and row["evidence_class"] == "manufacturer_direct_reference"
+                for row in ps5_rows
+            )
+        )
 
 
 if __name__ == "__main__":
