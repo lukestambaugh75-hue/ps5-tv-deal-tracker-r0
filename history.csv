@@ -11,3 +11,5 @@ date,target_id,retailer,product_name,price,evidence_class,url
 2026-07-08,tv,Walmart,Hisense 65 inch M7 Series Mini-LED QLED 4K UHD Google Smart TV,398.0,houston_visible_buy_path,https://www.walmart.com/browse/electronics/65-inch-tvs/3944_1060825_2489948_3421074
 2026-07-19,ps5,GameStop,Sony PlayStation 5 Console,529.99,big_box_public_price,https://www.gamestop.com/consoles-hardware/playstation-5
 2026-07-19,tv,Best Buy,TCL 65 inch Class Q6-Series 4K UHD QLED Smart Google TV (2024),399.99,houston_visible_buy_path,https://www.bestbuy.com/site/tvs/65-inch-tvs/pcmcat1514910447059.c?id=pcmcat1514910447059
+2026-07-21,ps5,GameStop,Sony PlayStation 5 Console,549.99,big_box_public_price,https://www.gamestop.com/consoles-hardware/playstation-5/consoles/products/sony-playstation-5-console/229025.html
+2026-07-21,tv,Sam's Club,VIZIO 65-inch Class Quantum Series QLED Smart TV,328.0,member_only,https://www.samsclub.com/ip/VIZIO-65-Class-Quantum-Series-QLED-Smart-TV/13743012826?classType=REGULAR
