@@ -15,3 +15,5 @@ date,target_id,retailer,product_name,price,evidence_class,url
 2026-07-21,tv,Sam's Club,VIZIO 65-inch Class Quantum Series QLED Smart TV,328.0,member_only,https://www.samsclub.com/ip/VIZIO-65-Class-Quantum-Series-QLED-Smart-TV/13743012826?classType=REGULAR
 2026-07-23,ps5,Target,PlayStation 5 Disc Console 1TB - Fortnite Flowering Chaos Bundle,449.99,big_box_public_price,https://www.target.com/s/ps5%2Bgame%2Bconsole%2Bslim%2Bdigital
 2026-07-23,tv,Walmart,TCL 65-inch Q Series QLED 4K UHD HDR Smart Google TV,358.0,big_box_public_price,https://www.walmart.com/browse/electronics/65-inch-tvs/qled-tvs/3944_1060825_2489948_3421074/dGVsZXZpc2lvbl90eXBlOlFMRUQgVFZz
+2026-07-24,ps5,Target,PlayStation 5 Disc Console 1TB - Fortnite Flowering Chaos Bundle,449.99,big_box_public_price,https://www.target.com/p/-/A-94967680
+2026-07-24,tv,Costco,Hisense 65-inch Class QD6 Series 4K UHD QLED LCD TV,249.97,member_only,https://www.costco.com/CompareProductsDisplay?partNumbers=9465065
