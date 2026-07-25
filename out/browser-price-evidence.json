@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-07-24T11:02:57Z",
+  "captured_at": "2026-07-25T11:03:47Z",
   "purchase_area": "Big-box retailers and Houston-area pickup/delivery",
   "attempted_retailers": [
     "Best Buy",
@@ -22,26 +22,26 @@
       "price": 449.99,
       "url": "https://www.target.com/p/-/A-94967680",
       "stock_status": "In Stock; Add to cart shown",
-      "pickup_delivery": "Online purchase path is visible; confirm selected Houston store, delivery timing, tax, and final cart total before buying.",
+      "pickup_delivery": "Target showed a live online purchase path; confirm selected Houston pickup, delivery timing, tax, and final cart total before buying.",
       "evidence_class": "big_box_public_price",
       "condition": "new",
       "evidence_text": "Current-run Target product page displayed the PS5 Disc Console 1TB - Fortnite Flowering Chaos Bundle at $449.99 (MSRP $549.99), In Stock, with Add to cart.",
-      "captured_at": "2026-07-24T11:02:57Z"
+      "captured_at": "2026-07-25T11:03:47Z"
     },
     {
       "target_id": "ps5",
       "retailer": "Walmart",
-      "brand": "Sony",
+      "brand": "PlayStation",
       "model": "PlayStation 5 Digital Console Slim - 825GB",
       "product_name": "PlayStation 5 Digital Console Slim - 825GB",
       "price": 599.0,
-      "url": "https://www.walmart.com/browse/video-games/playstation-5-ps5-consoles/2636_6111926_2762884",
-      "stock_status": "Low stock; Add control displayed",
-      "pickup_delivery": "Walmart showed free shipping arriving tomorrow and free pickup as soon as tomorrow; confirm the Houston store before buying.",
+      "url": "https://www.walmart.com/ip/PlayStation-5-Digital-Console-Slim/17852302051",
+      "stock_status": "New; low stock; Add to cart shown",
+      "pickup_delivery": "Walmart.com showed free shipping, pickup, and delivery controls; confirm the Houston store and timing before buying.",
       "evidence_class": "big_box_public_price",
       "condition": "new",
-      "evidence_text": "Current-run Walmart console results listed the PlayStation 5 Digital Console Slim - 825GB at $599.00, low stock, with delivery and pickup availability.",
-      "captured_at": "2026-07-24T11:02:57Z"
+      "evidence_text": "Current-run Walmart product page displayed the PlayStation 5 Digital Console Slim - 825GB at $599.00, new, low stock, with Add to cart; it was sold and shipped by Walmart.com.",
+      "captured_at": "2026-07-25T11:03:47Z"
     },
     {
       "target_id": "ps5",
@@ -50,13 +50,28 @@
       "model": "1000049888",
       "product_name": "PlayStation 5 Slim Console - 1TB",
       "price": 649.99,
-      "url": "https://www.bestbuy.com/product/playstation-5-slim-console-1tb-playstation-5/JXHQ37TYLC",
+      "url": "https://www.bestbuy.com/product/playstation-5-slim-console-1tb/JXHQ37TYLC",
       "stock_status": "Add to cart; pickup and shipping shown",
-      "pickup_delivery": "Best Buy showed pickup readiness and shipping; confirm the selected Houston store and delivery timing before buying.",
+      "pickup_delivery": "Best Buy showed pickup and shipping controls; confirm the selected Houston store and delivery timing before buying.",
       "evidence_class": "big_box_public_price",
       "condition": "new",
-      "evidence_text": "Current-run Best Buy product page displayed the PlayStation 5 Slim Console - 1TB, model 1000049888, at $649.99 with Add to cart, pickup, and shipping shown.",
-      "captured_at": "2026-07-24T11:02:57Z"
+      "evidence_text": "Current-run Best Buy product page displayed the PlayStation 5 Slim Console - 1TB, model 1000049888, at $649.99 with Add to cart and pickup/shipping availability.",
+      "captured_at": "2026-07-25T11:03:47Z"
+    },
+    {
+      "target_id": "ps5",
+      "retailer": "GameStop",
+      "brand": "Sony",
+      "model": "PlayStation 5 Console",
+      "product_name": "Sony PlayStation 5 Console",
+      "price": 749.99,
+      "url": "https://www.gamestop.com/consoles-hardware/playstation-5/consoles/products/sony-playstation-5-console/11108140.html",
+      "stock_status": "Currently unavailable for the selected edition",
+      "pickup_delivery": "GameStop displayed store pickup, same-day delivery, and ship-to-home options but marked the selected edition currently unavailable; confirm a Houston store before buying.",
+      "evidence_class": "out_of_stock",
+      "condition": "new",
+      "evidence_text": "Current-run GameStop product page listed the new Sony PlayStation 5 Console at $749.99, but the selected edition was marked Currently Unavailable.",
+      "captured_at": "2026-07-25T11:03:47Z"
     },
     {
       "target_id": "ps5",
@@ -71,7 +86,24 @@
       "evidence_class": "manufacturer_direct_reference",
       "condition": "new",
       "evidence_text": "Current-run PlayStation Direct catalog displayed the PlayStation 5 Console - 1 TB at $649.00 and the Digital Edition at $599.00.",
-      "captured_at": "2026-07-24T11:02:57Z"
+      "captured_at": "2026-07-25T11:03:47Z"
+    },
+    {
+      "target_id": "tv",
+      "retailer": "Costco",
+      "brand": "Hisense",
+      "model": "65QD65NF",
+      "product_name": "Hisense 65-inch Class QD6 Series 4K UHD QLED LCD TV",
+      "price": 249.97,
+      "url": "https://www.costco.com/CompareProductsDisplay?partNumbers=9465065",
+      "stock_status": "Online Only; Costco Direct listing displayed",
+      "pickup_delivery": "Costco Direct online price; membership and Houston-area delivery details must be confirmed before buying.",
+      "evidence_class": "member_only",
+      "condition": "new",
+      "size_inches": 65,
+      "quality_tier": "mid",
+      "evidence_text": "Current-run Costco comparison page displayed the online-only Hisense 65-inch QD6 Series 4K UHD QLED LCD TV, model 65QD65NF, at $249.97 with a 3-year warranty.",
+      "captured_at": "2026-07-25T11:03:47Z"
     },
     {
       "target_id": "tv",
@@ -80,15 +112,15 @@
       "model": "65Q51K",
       "product_name": "TCL 65-inch Q Series QLED 4K UHD HDR Smart Google TV",
       "price": 358.0,
-      "url": "https://www.walmart.com/ip/14513322750",
-      "stock_status": "Add to cart shown",
-      "pickup_delivery": "Free shipping arriving tomorrow and nearby pickup check were shown; confirm selected Houston store and timing before buying.",
+      "url": "https://www.walmart.com/ip/TCL-Google-TV-65Q51K/14513322750",
+      "stock_status": "Add to cart; low stock",
+      "pickup_delivery": "Walmart.com showed free shipping and nearby pickup controls; confirm the Houston store and timing before buying.",
       "evidence_class": "big_box_public_price",
       "condition": "new",
       "size_inches": 65,
       "quality_tier": "mid",
-      "evidence_text": "Current-run Walmart product page displayed the TCL 65-inch Q Series QLED 4K UHD HDR Smart Google TV, model 65Q51K, at $358.00 with Add to cart and free shipping.",
-      "captured_at": "2026-07-24T11:02:57Z"
+      "evidence_text": "Current-run Walmart product page displayed the TCL 65-inch Q Series QLED 4K UHD HDR Smart Google TV, model 65Q51K, at $358.00 with Add to cart and free shipping; the item was sold and shipped by Walmart.com.",
+      "captured_at": "2026-07-25T11:03:47Z"
     },
     {
       "target_id": "tv",
@@ -99,13 +131,13 @@
       "price": 399.99,
       "url": "https://www.target.com/p/-/A-90381693",
       "stock_status": "In Stock; Add to cart shown",
-      "pickup_delivery": "Online purchase path is visible; confirm selected Houston pickup, delivery timing, tax, and final cart total before buying.",
+      "pickup_delivery": "Target showed a live online purchase path; confirm selected Houston pickup, delivery timing, tax, and final cart total before buying.",
       "evidence_class": "big_box_public_price",
       "condition": "new",
       "size_inches": 65,
       "quality_tier": "mid",
-      "evidence_text": "Current-run Target product page displayed the TCL 65-inch Q6-Series QLED Smart Google TV, model 65Q651G, at $399.99 (regular $419.99), In Stock, with Add to cart.",
-      "captured_at": "2026-07-24T11:02:57Z"
+      "evidence_text": "Current-run Target product page displayed the TCL 65-inch Q6-Series 4K UHD HDR QLED Smart Google TV, model 65Q651G, at $399.99, In Stock, with Add to cart.",
+      "captured_at": "2026-07-25T11:03:47Z"
     },
     {
       "target_id": "tv",
@@ -114,49 +146,15 @@
       "model": "65Q651G",
       "product_name": "TCL 65-inch Class Q6-Series 4K UHD QLED Smart Google TV (2024)",
       "price": 399.99,
-      "url": "https://www.bestbuy.com/product/tcl-65-class-q6-series-4k-uhd-hdr-qled-smart-google-tv-2024/6579449?skuId=6579449",
+      "url": "https://www.bestbuy.com/product/tcl-65-class-q6-series-4k-uhd-hdr-qled-smart-google-tv-2024/J36QYTWHHC",
       "stock_status": "Add to cart; pickup and delivery shown",
       "pickup_delivery": "Best Buy showed pickup and delivery controls; confirm the selected Houston store and timing before buying.",
       "evidence_class": "big_box_public_price",
       "condition": "new",
       "size_inches": 65,
       "quality_tier": "mid",
-      "evidence_text": "Current-run Best Buy product page displayed the TCL 65-inch Q6-Series 4K UHD QLED Smart Google TV (2024), model 65Q651G, at $399.99 with Add to cart.",
-      "captured_at": "2026-07-24T11:02:57Z"
-    },
-    {
-      "target_id": "tv",
-      "retailer": "Costco",
-      "brand": "Hisense",
-      "model": "QD6 Series",
-      "product_name": "Hisense 65-inch Class QD6 Series 4K UHD QLED LCD TV",
-      "price": 249.97,
-      "url": "https://www.costco.com/CompareProductsDisplay?partNumbers=9465065",
-      "stock_status": "Online Only; purchase controls shown",
-      "pickup_delivery": "Costco Direct online price; membership and Houston-area delivery details must be confirmed before buying.",
-      "evidence_class": "member_only",
-      "condition": "new",
-      "size_inches": 65,
-      "quality_tier": "mid",
-      "evidence_text": "Current-run Costco comparison page displayed the online-only Hisense 65-inch QD6 Series 4K UHD QLED LCD TV at $249.97, including a 3-year warranty.",
-      "captured_at": "2026-07-24T11:02:57Z"
-    },
-    {
-      "target_id": "tv",
-      "retailer": "Home Depot",
-      "brand": "Samsung",
-      "model": "UN65M70HAFXZA",
-      "product_name": "Samsung 65-inch Class M70H Series Mini LED 4K UHD Smart Tizen TV",
-      "price": 477.99,
-      "url": "https://www.homedepot.com/b/Smart-Home-Smart-Devices-Smart-Electronics-Smart-TVs/65-in/N-5yc1vZ2fkph7mZ1z25e2i",
-      "stock_status": "Add to Cart shown; store not selected",
-      "pickup_delivery": "Home Depot category page showed Add to Cart; confirm Houston-store pickup or delivery, timing, and seller identity before buying.",
-      "evidence_class": "big_box_public_price",
-      "condition": "new",
-      "size_inches": 65,
-      "quality_tier": "mid",
-      "evidence_text": "Current-run Home Depot 65-inch smart-TV results displayed the Samsung M70H Series Mini LED 4K UHD Smart Tizen TV, model UN65M70HAFXZA, at $477.99 with Add to Cart.",
-      "captured_at": "2026-07-24T11:02:57Z"
+      "evidence_text": "Current-run Best Buy product page displayed the TCL 65-inch Q6-Series 4K UHD QLED Smart Google TV, model 65Q651G, at $399.99 with Add to cart and pickup/delivery availability.",
+      "captured_at": "2026-07-25T11:03:47Z"
     }
   ]
 }
