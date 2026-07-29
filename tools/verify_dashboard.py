@@ -38,7 +38,14 @@ FORBIDDEN = [
 def read_target(public=False, input_path=LOCAL_INDEX):
     if public:
         with urllib.request.urlopen(PUBLIC_URL, timeout=20) as response:
-            return response.read().decode("utf-8", errors="replace")
+            raw = response.read()
+        with open(LOCAL_INDEX, "rb") as fh:
+            expected = fh.read()
+        if raw != expected:
+            raise AssertionError(
+                "live dashboard bytes differ from the approved local index.html"
+            )
+        return raw.decode("utf-8", errors="strict")
     with open(input_path, encoding="utf-8") as f:
         return f.read()
 

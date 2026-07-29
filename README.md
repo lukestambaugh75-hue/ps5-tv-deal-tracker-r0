@@ -51,6 +51,11 @@ For a network-free GitHub Pages check against the saved page, run:
 /usr/bin/python3 tools/check_public_pages.py --local
 ```
 
+The normal Pages check is stronger: it requires clean `main`, local HEAD equal
+to both the tracking ref and live `origin/main`, then compares the response bytes
+to the committed `index.html`. HTTP 200 and matching text alone are not release
+proof.
+
 `make refresh` is deliberately separate and mutating: it applies the saved
 browser evidence to `data/deals.json` and rewrites `index.html`. The scheduled
 run then calls the history and email targets once before using `make check`.
