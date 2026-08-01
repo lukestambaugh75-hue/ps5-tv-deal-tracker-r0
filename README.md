@@ -88,3 +88,11 @@ Evidence classes are visible on the dashboard:
 - `tools/*.py` - refresh, render, email, history, and verification scripts.
 
 Prices and stock are point-in-time evidence. Confirm cart total, tax, pickup/delivery timing, and seller identity before buying.
+
+## Encrypted scheduled delivery
+
+`python3 tools/encrypted_dashboard_delivery.py check` validates the complete
+private deal dashboard and its exact Luke-and-Devin audience. Scheduled sends
+retain all existing refresh and public-dashboard gates, then deliver one concise
+email whose magic link opens every tracked item, evidence field, history entry,
+and direct retailer link.
