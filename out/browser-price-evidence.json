@@ -1,36 +1,7 @@
 {
-  "captured_at": "2026-07-29T21:32:22Z",
+  "captured_at": "2026-08-01T11:02:15Z",
   "purchase_area": "Big-box retailers and Houston-area pickup/delivery",
   "sources": [
-    {
-      "target_id": "ps5",
-      "retailer": "Target",
-      "brand": "PlayStation",
-      "model": "Fortnite Flowering Chaos Bundle",
-      "product_name": "PlayStation 5 Disc Console 1TB - Fortnite Flowering Chaos Bundle",
-      "price": 449.99,
-      "list_price": 549.99,
-      "url": "https://www.target.com/p/-/A-94967680",
-      "stock_status": "In Stock; Add to cart shown",
-      "pickup_delivery": "Target's current product page showed an online purchase path; confirm the selected Houston pickup or delivery option, timing, tax, and final cart total before buying.",
-      "evidence_class": "big_box_public_price",
-      "condition": "new",
-      "evidence_text": "Current-run Target product page displayed the new PS5 Disc Console 1TB Fortnite Flowering Chaos Bundle at $449.99, down from $549.99, In Stock, with Add to cart."
-    },
-    {
-      "target_id": "ps5",
-      "retailer": "Walmart",
-      "brand": "PlayStation",
-      "model": "PS5 Disc Console Slim 1TB",
-      "product_name": "PlayStation 5 Disc Console Slim - 1TB",
-      "price": 649.0,
-      "url": "https://www.walmart.com/browse/playstation-5/playstation-5-ps5-consoles/2636_5170403_3475115_2762884",
-      "stock_status": "Current listing shown; in 1K+ carts",
-      "pickup_delivery": "Walmart's current category page showed the console listing; confirm the Houston store, pickup or delivery timing, seller, tax, and final cart total before buying.",
-      "evidence_class": "big_box_public_price",
-      "condition": "new",
-      "evidence_text": "Current-run Walmart PlayStation 5 console listing displayed the PlayStation 5 Disc Console Slim 1TB at $649.00 and reported it in more than 1,000 carts."
-    },
     {
       "target_id": "ps5",
       "retailer": "PlayStation Direct",
@@ -43,37 +14,23 @@
       "pickup_delivery": "Manufacturer-direct online purchase path; no Houston pickup path was shown.",
       "evidence_class": "manufacturer_direct_reference",
       "condition": "new",
-      "evidence_text": "Current-run PlayStation Direct console catalog displayed the new PlayStation 5 Console 1 TB at $649.00 and the Digital Edition at $599.00."
-    },
-    {
-      "target_id": "ps5",
-      "retailer": "GameStop",
-      "brand": "Sony",
-      "model": "PlayStation 5 Console",
-      "product_name": "Sony PlayStation 5 Console",
-      "price": 749.99,
-      "url": "https://www.gamestop.com/consoles-hardware/playstation-5/consoles/products/sony-playstation-5-console/11108140.html",
-      "stock_status": "New edition listed; Add to cart shown",
-      "pickup_delivery": "GameStop's current product page showed an online purchase control; confirm the exact edition, Houston store or delivery option, tax, and final cart total before buying.",
-      "evidence_class": "big_box_public_price",
-      "condition": "new",
-      "evidence_text": "Current-run GameStop product page displayed the new Sony PlayStation 5 Console at $749.99, with Add to cart; lower prices shown were for pre-owned or refurbished conditions."
+      "evidence_text": "Live PlayStation Direct console catalog checked on 2026-08-01 displayed the new PlayStation 5 Console 1 TB at $649.00 and the Digital Edition at $599.00. The page is a manufacturer-direct reference, not a Houston pickup path."
     },
     {
       "target_id": "tv",
-      "retailer": "Walmart",
+      "retailer": "Best Buy",
       "brand": "TCL",
-      "model": "65Q51K",
-      "product_name": "TCL 65-inch Q Series QLED 4K UHD HDR Smart Google TV",
-      "price": 358.0,
-      "url": "https://www.walmart.com/ip/TCL-Google-TV-65Q51K/14513322750",
-      "stock_status": "Add to cart shown; low stock",
-      "pickup_delivery": "Walmart's current product listing showed shipping and pickup controls; confirm the Houston store, timing, seller, tax, and final cart total before buying.",
+      "model": "QM5K",
+      "product_name": "TCL 65-inch Class QM5K Series 4K UHD QD-Mini LED Smart TV with Google TV (2025)",
+      "price": 499.99,
+      "url": "https://www.bestbuy.com/site/searchpage.jsp?id=pcat17071&st=65+inch+qled+tvs",
+      "stock_status": "Add to cart shown",
+      "pickup_delivery": "Best Buy's live 65-inch QLED listing showed pickup in 1 hour and delivery; confirm the selected Houston store, timing, seller, tax, and final cart total before buying.",
       "evidence_class": "big_box_public_price",
       "condition": "new",
       "size_inches": 65,
       "quality_tier": "mid",
-      "evidence_text": "Current-run Walmart product listing displayed the TCL 65-inch Q Series QLED 4K UHD HDR Smart Google TV, model 65Q51K, at $358.00, sold and shipped by Walmart.com, with Add to cart and low-stock status."
+      "evidence_text": "Live Best Buy 65-inch QLED search listing checked on 2026-08-01 displayed the TCL QM5K 65-inch QD-Mini LED Google TV at $499.99, with pickup in 1 hour, delivery, and Add to cart."
     }
   ]
 }
