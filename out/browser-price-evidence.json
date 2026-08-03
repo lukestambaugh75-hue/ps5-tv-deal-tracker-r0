@@ -1,7 +1,36 @@
 {
-  "captured_at": "2026-08-01T11:02:15Z",
+  "captured_at": "2026-08-03T11:03:48Z",
   "purchase_area": "Big-box retailers and Houston-area pickup/delivery",
   "sources": [
+    {
+      "target_id": "ps5",
+      "retailer": "Target",
+      "brand": "PlayStation",
+      "model": "Fortnite Flowering Chaos Bundle",
+      "product_name": "PlayStation 5 Disc Console 1TB - Fortnite Flowering Chaos Bundle",
+      "price": 449.99,
+      "list_price": 549.99,
+      "url": "https://www.target.com/p/-/A-94967680",
+      "stock_status": "In Stock; Add to cart shown",
+      "pickup_delivery": "Target product page showed online purchase controls; confirm the selected Houston pickup or delivery option, timing, tax, and final cart total before buying.",
+      "evidence_class": "big_box_public_price",
+      "condition": "new",
+      "evidence_text": "Target's web-visible product page checked on 2026-08-03 displayed the new PS5 Disc Console 1TB Fortnite Flowering Chaos Bundle at $449.99, down from $549.99, In Stock, with Add to cart."
+    },
+    {
+      "target_id": "ps5",
+      "retailer": "Walmart",
+      "brand": "PlayStation",
+      "model": "PS5 Disc Console Slim 1TB",
+      "product_name": "PlayStation 5 Disc Console Slim - 1TB",
+      "price": 649.0,
+      "url": "https://www.walmart.com/c/kp/playstation-5",
+      "stock_status": "Add purchase control shown",
+      "pickup_delivery": "Walmart's web-visible PS5 category displayed an Add purchase control; confirm the Houston store, pickup or delivery timing, seller, tax, and final cart total before buying.",
+      "evidence_class": "big_box_public_price",
+      "condition": "new",
+      "evidence_text": "Walmart's web-visible PlayStation 5 category checked on 2026-08-03 displayed the PlayStation 5 Disc Console Slim 1TB at a current price of $649.00 with an Add purchase control."
+    },
     {
       "target_id": "ps5",
       "retailer": "PlayStation Direct",
@@ -14,23 +43,24 @@
       "pickup_delivery": "Manufacturer-direct online purchase path; no Houston pickup path was shown.",
       "evidence_class": "manufacturer_direct_reference",
       "condition": "new",
-      "evidence_text": "Live PlayStation Direct console catalog checked on 2026-08-01 displayed the new PlayStation 5 Console 1 TB at $649.00 and the Digital Edition at $599.00. The page is a manufacturer-direct reference, not a Houston pickup path."
+      "evidence_text": "PlayStation Direct's live console catalog checked on 2026-08-03 displayed the new PlayStation 5 Console 1 TB at $649.00 and the Digital Edition at $599.00."
     },
     {
       "target_id": "tv",
       "retailer": "Best Buy",
-      "brand": "TCL",
-      "model": "QM5K",
-      "product_name": "TCL 65-inch Class QM5K Series 4K UHD QD-Mini LED Smart TV with Google TV (2025)",
-      "price": 499.99,
-      "url": "https://www.bestbuy.com/site/searchpage.jsp?id=pcat17071&st=65+inch+qled+tvs",
-      "stock_status": "Add to cart shown",
-      "pickup_delivery": "Best Buy's live 65-inch QLED listing showed pickup in 1 hour and delivery; confirm the selected Houston store, timing, seller, tax, and final cart total before buying.",
+      "brand": "Insignia",
+      "model": "QF Series 65-inch",
+      "product_name": "Insignia 65-inch Class QF Series QLED 4K UHD Smart Fire TV",
+      "price": 349.99,
+      "list_price": 499.99,
+      "url": "https://www.bestbuy.com/site/searchpage.jsp?id=pcat17071&st=65%22+4k+qled+tv",
+      "stock_status": "Add to cart shown; pickup today",
+      "pickup_delivery": "Best Buy's web-visible listing showed pickup today and delivery; confirm the selected Houston store, timing, seller, tax, and final cart total before buying.",
       "evidence_class": "big_box_public_price",
       "condition": "new",
       "size_inches": 65,
       "quality_tier": "mid",
-      "evidence_text": "Live Best Buy 65-inch QLED search listing checked on 2026-08-01 displayed the TCL QM5K 65-inch QD-Mini LED Google TV at $499.99, with pickup in 1 hour, delivery, and Add to cart."
+      "evidence_text": "Best Buy's live 65-inch QLED search listing checked on 2026-08-03 displayed the Insignia QF Series 65-inch QLED 4K Smart Fire TV at $349.99, down from $499.99, with pickup today, delivery, and Add to cart."
     }
   ]
 }

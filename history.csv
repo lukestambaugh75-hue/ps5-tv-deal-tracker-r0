@@ -25,3 +25,5 @@ date,target_id,retailer,product_name,price,evidence_class,url
 2026-07-29,tv,Walmart,TCL 65-inch Q Series QLED 4K UHD HDR Smart Google TV,358.0,big_box_public_price,https://www.walmart.com/ip/TCL-Google-TV-65Q51K/14513322750
 2026-08-01,ps5,PlayStation Direct,PlayStation 5 Console - 1 TB,649.0,manufacturer_direct_reference,https://direct.playstation.com/en-us/hardware/ps5/
 2026-08-01,tv,Best Buy,TCL 65-inch Class QM5K Series 4K UHD QD-Mini LED Smart TV with Google TV (2025),499.99,big_box_public_price,https://www.bestbuy.com/site/searchpage.jsp?id=pcat17071&st=65+inch+qled+tvs
+2026-08-03,ps5,Target,PlayStation 5 Disc Console 1TB - Fortnite Flowering Chaos Bundle,449.99,big_box_public_price,https://www.target.com/p/-/A-94967680
+2026-08-03,tv,Best Buy,Insignia 65-inch Class QF Series QLED 4K UHD Smart Fire TV,349.99,big_box_public_price,https://www.bestbuy.com/site/searchpage.jsp?id=pcat17071&st=65%22+4k+qled+tv
