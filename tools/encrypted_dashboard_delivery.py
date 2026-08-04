@@ -18,6 +18,13 @@ if str(TOOLS_ROOT) not in sys.path:
 
 from encrypted_dashboard_publisher.tracker_cli import run_tracker_cli  # noqa: E402
 
+try:
+    from .refresh_state import evaluate_refresh
+    from .tracker_core import best_rows_by_target, money, snapshot_is_represented
+except ImportError:
+    from refresh_state import evaluate_refresh
+    from tracker_core import best_rows_by_target, money, snapshot_is_represented
+
 
 TRACKER_ID = "ps5-tv"
 BINDING_ID = "binding_gjuVFrUKDKfvZGGaw9Ic1n3c"
@@ -44,6 +51,42 @@ def _history_by_target() -> dict[str, list[dict]]:
                 }
             )
     return {key: value[-30:] for key, value in result.items()}
+
+
+def _preview_value(item: dict | None) -> str:
+    if not item:
+        return "No current buy path"
+    retailer = str(item.get("retailer") or "Unknown retailer")
+    product = str(item.get("product_name") or item.get("model") or "Tracked offer")
+    return f"{retailer} · {money(item.get('price'))} · {product}"
+
+
+def _email_preview(data: dict) -> list[dict]:
+    """Return compact, fresh-only email rows; never promote a stale snapshot."""
+    refresh = data.get("refresh") or {}
+    state = evaluate_refresh(refresh)
+    if state["state"] not in {"Fresh", "Due"} or not snapshot_is_represented(data):
+        return []
+
+    items = data.get("items") or []
+    best = best_rows_by_target(data)
+    warning_count = sum(len(item.get("warnings") or []) for item in items)
+    target_counts = {
+        target_id: sum(1 for item in items if item.get("target_id") == target_id)
+        for target_id in ("ps5", "tv")
+    }
+    return [
+        {"label": "Best PS5", "value": _preview_value(best.get("ps5"))},
+        {"label": "Best 65-inch TV", "value": _preview_value(best.get("tv"))},
+        {
+            "label": "Tracked offers",
+            "value": f"{len(items)} total · {target_counts['ps5']} PS5 · {target_counts['tv']} TV",
+        },
+        {
+            "label": "Review flags",
+            "value": "No current warning flags" if not warning_count else f"{warning_count} flagged row{'s' if warning_count != 1 else ''}",
+        },
+    ]
 
 
 def build_bundle() -> tuple[dict, dict]:
@@ -109,6 +152,15 @@ def build_bundle() -> tuple[dict, dict]:
         "recommendation": dashboard["summary"]["recommendation"],
         "freshness": dashboard["source_freshness"],
     }
+    preview = _email_preview(data)
+    if preview:
+        brief.update(
+            {
+                "summary_heading": "Dashboard preview",
+                "summary_columns": ["Metric", "Current view"],
+                "summary_table": preview,
+            }
+        )
     return dashboard, brief
 
 

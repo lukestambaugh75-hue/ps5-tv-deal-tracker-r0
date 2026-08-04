@@ -20,3 +20,11 @@ def test_encrypted_dashboard_keeps_every_offer_history_and_two_person_audience()
         "devin.mullen89@gmail.com",
     ]
     assert brief["cc"] == [] and brief["bcc"] == []
+    assert brief["summary_heading"] == "Dashboard preview"
+    assert brief["summary_columns"] == ["Metric", "Current view"]
+    assert [row["label"] for row in brief["summary_table"]] == [
+        "Best PS5",
+        "Best 65-inch TV",
+        "Tracked offers",
+        "Review flags",
+    ]
