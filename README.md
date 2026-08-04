@@ -82,7 +82,7 @@ Evidence classes are visible on the dashboard:
 - `out/browser-price-evidence.json` - latest evidence packet consumed by the refresh script.
 - `history.csv` - durable best-price trend ledger.
 - `index.html` - rendered public dashboard.
-- `out/latest-email.json` - generated email payload for the browser Gmail send.
+- `out/latest-email.json` - legacy generated email payload; it is not used for encrypted scheduled delivery.
 - `automation/ps5-tv-deal-tracker-email.toml` - repo mirror of the Codex automation.
 - `tools/audience_guard.py` - exact recipient, URL, navigation, and local-asset gate.
 - `tools/*.py` - refresh, render, email, history, and verification scripts.
@@ -93,6 +93,13 @@ Prices and stock are point-in-time evidence. Confirm cart total, tax, pickup/del
 
 `python3 tools/encrypted_dashboard_delivery.py check` validates the complete
 private deal dashboard and its exact Luke-and-Devin audience. Scheduled sends
-retain all existing refresh and public-dashboard gates, then deliver one concise
-email whose magic link opens every tracked item, evidence field, history entry,
-and direct retailer link.
+retain all existing refresh and public-dashboard gates, then deliver one
+encrypted-link email with a labeled preview of the best PS5, best 65-inch TV,
+tracked-offer count, and review flags. The preview is included only for a Fresh
+or Due snapshot; the encrypted link opens the complete private dashboard with
+every tracked item, evidence field, history entry, and direct retailer link.
+
+The scheduled automation uses `check`, `prepare`, one SMTP send with the
+`encrypted-link` policy, receipt verification, then `finalize`. It must never
+use the legacy payload or a browser compose surface. Bearer links and private
+payloads are never logged, opened, summarized, or committed.

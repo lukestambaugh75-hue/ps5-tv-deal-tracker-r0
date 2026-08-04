@@ -33,9 +33,11 @@ Required run order:
 11. If tracked files changed and the branch is `main`, stage only touched repo files, commit with a clear one-line message, and push to origin. Do not force-push.
 12. Run `make pages-check`. If GitHub Pages is not current yet, wait and retry.
 13. Run `make public-verify`.
-14. Read `out/latest-email.json` and send one Gmail email using the signed-in Chrome/Gmail browser route. Address it exactly to `lukestambaugh75@gmail.com` and `devin.mullen89@gmail.com`, with no CC/BCC, using the generated subject and body. Include the public dashboard link `https://lukestambaugh75-hue.github.io/ps5-tv-deal-tracker-r0/` and no other dashboard link.
-15. Before sending, visibly verify the two recipient chips, no CC/BCC, subject, body, dashboard link, and absence of any other dashboard link.
-16. After the email attempt is complete, stop and wait for the next scheduled run.
+14. Run `/usr/bin/python3 tools/encrypted_dashboard_delivery.py check`, then `/usr/bin/python3 tools/encrypted_dashboard_delivery.py prepare`. Capture only the absolute path printed as `EMAIL_PAYLOAD=`; never print, open, summarize, or commit the bearer link or private payload.
+15. Send exactly once with `/usr/bin/python3 "/Users/lukestambaugh/Documents/Files for GitHub/Tools/dashboard-mailer/send_dashboard_email.py" --payload "<EMAIL_PAYLOAD path>" --policy encrypted-link`. The payload must remain exactly Luke and Devin with empty CC/BCC. Do not attach files or inline images and do not use Chrome/Gmail. Never send the legacy `out/latest-email.json` payload.
+16. Verify the delivered message with `/usr/bin/python3 "/Users/lukestambaugh/Documents/Files for GitHub/Tools/dashboard-mailer/verify_sent.py" --subject "PS5" --policy encrypted-link`. Only after receipt passes, run `/usr/bin/python3 tools/encrypted_dashboard_delivery.py finalize`. If the send definitively fails before acceptance, run `/usr/bin/python3 tools/encrypted_dashboard_delivery.py abort`. If delivery is ambiguous, do not abort, retry, or create another link; leave pending state intact and reconcile by read-only IMAP search.
+17. The encrypted email includes a labeled dashboard preview (best PS5, best 65-inch TV, tracked-offer count, and review flags) only when the current snapshot is Fresh or Due. This is a preview, not a replacement for the encrypted private dashboard.
+18. After the email attempt is complete, stop and wait for the next scheduled run.
 
 Do not purchase anything or contact sellers. Confirm final cart total, tax, pickup/delivery timing, and seller identity before buying."""
 status = "ACTIVE"
